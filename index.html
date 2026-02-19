@@ -167,13 +167,22 @@
             const snap = await db.collection("citas").where("barbero", "==", currentBarber).get();
             todasLasCitas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             filtrarCitasAdmin('hoy');
+            renderAdminControls();
         }
 
         window.renderAdminControls = () => {
             const dG = document.getElementById('admin-dias'), hG = document.getElementById('admin-horas'), lE = document.getElementById('lista-cierres-especiales');
             dG.innerHTML = ""; hG.innerHTML = ""; lE.innerHTML = "";
             diasNombres.forEach((d, i) => { dG.innerHTML += `<button onclick="toggleDia(${i})" class="text-[10px] p-3 rounded-xl font-black ${config.diasActivos.includes(i) ? 'bg-yellow-500 text-black' : 'bg-zinc-800 text-zinc-500'}">${d}</button>`; });
-            horasBase.forEach(h => { hG.innerHTML += `<button onclick="toggleHora('${h}')" class="text-[9px] p-3 rounded-xl border ${config.horasBloqueadas?.includes(h) ? 'bg-red-900 border-red-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400'}">${h}</button>`; });
+            const hoy = new Date().toISOString().split('T')[0];
+            const horasOcupadasHoy = todasLasCitas.filter(c => c.fecha === hoy).map(c => c.hora);
+            horasBase.forEach(h => {
+                let cls;
+                if (config.horasBloqueadas?.includes(h)) cls = 'bg-red-900 border-red-500 text-white';
+                else if (horasOcupadasHoy.includes(h)) cls = 'bg-yellow-600/20 border-yellow-500 text-yellow-400';
+                else cls = 'bg-zinc-800 border-zinc-700 text-zinc-400';
+                hG.innerHTML += `<button onclick="toggleHora('${h}')" class="text-[9px] p-3 rounded-xl border ${cls}">${h}</button>`;
+            });
             (config.cierresEspeciales || []).forEach(f => { lE.innerHTML += `<div class="bg-zinc-800 px-3 py-1 rounded-full text-[9px] border border-yellow-500/30 flex items-center gap-2 text-white italic">${f} <button onclick="quitarCierre('${f}')" class="text-red-500 font-black">X</button></div>`; });
         };
 
