@@ -45,7 +45,7 @@
             <button onclick="registrar()" class="w-full bg-white text-black font-black py-4 rounded-2xl uppercase">Crear Cuenta</button>
             <button onclick="toggleAuth('login')" class="w-full text-center text-xs text-zinc-500 underline mt-2">Ya tengo cuenta</button>
         </div>
-        <p class="text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v1.3</p>
+        <p class="text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v2.0</p>
     </div>
 
     <div id="view-app" class="hidden max-w-md mx-auto p-5">
@@ -74,7 +74,7 @@
             <div id="grid-horarios" class="grid grid-cols-3 gap-3"></div>
             <button onclick="irAlPaso(1)" class="w-full py-4 text-zinc-500 font-bold uppercase text-[10px]">← Cambiar fecha</button>
         </section>
-        <p class="text-center text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v1.3</p>
+        <p class="text-center text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v2.0</p>
     </div>
 
     <div id="view-admin" class="hidden max-w-md mx-auto p-5 space-y-6">
@@ -101,6 +101,23 @@
                 <div class="grid grid-cols-3 gap-2" id="admin-horas"></div>
             </div>
             <button onclick="guardarConfig()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-2xl text-[11px] uppercase shadow-xl">GUARDAR AJUSTES</button>
+        </div>
+        <div class="bg-card border border-zinc-800 rounded-[2rem] p-6">
+            <p class="text-[10px] font-black uppercase text-yellow-500 mb-4 tracking-widest italic text-center">Resumen</p>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <p class="text-3xl font-black text-yellow-500" id="stat-hoy">-</p>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Hoy</p>
+                </div>
+                <div>
+                    <p class="text-3xl font-black text-yellow-500" id="stat-semana">-</p>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Esta semana</p>
+                </div>
+                <div>
+                    <p class="text-xl font-black text-yellow-500" id="stat-hora">-</p>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Hora popular</p>
+                </div>
+            </div>
         </div>
         <div class="flex gap-2 bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-800">
             <button onclick="filtrarCitasAdmin('hoy')" id="f-hoy" class="flex-1 py-4 rounded-2xl text-[10px] font-black bg-yellow-500 text-black">CITAS HOY</button>
@@ -190,6 +207,7 @@
             todasLasCitas = snap.docs.filter(d => d.data().fecha >= hoy).map(doc => ({ id: doc.id, ...doc.data() }));
             filtrarCitasAdmin('hoy');
             renderAdminControls();
+            renderStats();
         }
 
         window.renderAdminControls = () => {
@@ -236,6 +254,26 @@
                 lista.innerHTML += `<div class="${cardClass} p-5 rounded-3xl flex justify-between items-center"><div><p class="font-black text-sm uppercase text-white flex items-center gap-2">${c.nombre}${badge}</p><p class="text-yellow-500 font-bold text-[10px] italic">${formatFecha(c.fecha)} · ${c.hora}</p></div><div class="flex items-center gap-4"><a href="https://wa.me/${c.tel}?text=${msg}" target="_blank" class="bg-green-600 p-2 rounded-full"><svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.312.145.353.498 1.213.542 1.3.043.087.072.188.014.303-.058.116-.087.188-.173.289l-.26.303c-.087.101-.177.211-.077.383.1.173.444.733.953 1.185.656.584 1.21.765 1.383.852.173.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a><button onclick="borrarCitaAdmin('${c.id}')" class="bg-red-900/40 w-11 h-11 flex items-center justify-center rounded-full text-red-500 font-black">X</button></div></div>`;
             });
         };
+
+        function renderStats() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const ahora = new Date();
+            const diaSemana = ahora.getDay();
+            const lunes = new Date(ahora);
+            lunes.setDate(ahora.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
+            const domingo = new Date(lunes);
+            domingo.setDate(lunes.getDate() + 6);
+            const lunesStr = lunes.toISOString().split('T')[0];
+            const domingoStr = domingo.toISOString().split('T')[0];
+            const hoyCount = todasLasCitas.filter(c => c.fecha === hoy).length;
+            const semanaCount = todasLasCitas.filter(c => c.fecha >= lunesStr && c.fecha <= domingoStr).length;
+            const horaCount = {};
+            todasLasCitas.forEach(c => { horaCount[c.hora] = (horaCount[c.hora] || 0) + 1; });
+            const horaPopular = Object.entries(horaCount).sort((a,b) => b[1]-a[1])[0]?.[0] || '-';
+            document.getElementById('stat-hoy').textContent = hoyCount;
+            document.getElementById('stat-semana').textContent = semanaCount;
+            document.getElementById('stat-hora').textContent = horaPopular;
+        }
 
         window.guardarConfig = async () => { await db.collection("config").doc(`horarios_${currentBarber}`).set(config); alert("Ajustes Guardados ✅"); };
         window.toggleDia = (i) => { if(config.diasActivos.includes(i)) config.diasActivos = config.diasActivos.filter(x => x !== i); else config.diasActivos.push(i); renderAdminControls(); };
