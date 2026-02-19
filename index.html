@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
-        body { background-color: #000; color: #fff; font-family: system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #000; color: #fff; font-family: system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         .barber-logo { width: 60px; height: 60px; background: url('https://cdn-icons-png.flaticon.com/512/2602/2602157.png') no-repeat center; background-size: contain; filter: drop-shadow(0 0 8px #eab308); margin: 0 auto 1rem; }
         .bg-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid #222; }
         .cita-activa-card { background: linear-gradient(135deg, #eab308 0%, #a17c06 100%); color: #000; box-shadow: 0 10px 20px rgba(234, 179, 8, 0.3); }
@@ -43,6 +43,7 @@
             <button onclick="registrar()" class="w-full bg-white text-black font-black py-4 rounded-2xl uppercase">Crear Cuenta</button>
             <button onclick="toggleAuth('login')" class="w-full text-center text-xs text-zinc-500 underline mt-2">Ya tengo cuenta</button>
         </div>
+        <p class="text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v1.2</p>
     </div>
 
     <div id="view-app" class="hidden max-w-md mx-auto p-5">
@@ -71,6 +72,7 @@
             <div id="grid-horarios" class="grid grid-cols-3 gap-3"></div>
             <button onclick="irAlPaso(1)" class="w-full py-4 text-zinc-500 font-bold uppercase text-[10px]">← Cambiar fecha</button>
         </section>
+        <p class="text-center text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v1.2</p>
     </div>
 
     <div id="view-admin" class="hidden max-w-md mx-auto p-5 space-y-6">
