@@ -164,8 +164,13 @@
         async function descargarCitasAdmin() {
             const lista = document.getElementById('lista-citas');
             lista.innerHTML = "<p class='text-center opacity-30 text-xs animate-pulse'>CARGANDO...</p>";
+            const hoy = new Date().toISOString().split('T')[0];
             const snap = await db.collection("citas").where("barbero", "==", currentBarber).get();
-            todasLasCitas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const batch = db.batch();
+            let hayViejas = false;
+            snap.docs.forEach(doc => { if (doc.data().fecha < hoy) { batch.delete(doc.ref); hayViejas = true; } });
+            if (hayViejas) await batch.commit();
+            todasLasCitas = snap.docs.filter(d => d.data().fecha >= hoy).map(doc => ({ id: doc.id, ...doc.data() }));
             filtrarCitasAdmin('hoy');
             renderAdminControls();
         }
