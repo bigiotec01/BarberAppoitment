@@ -231,31 +231,40 @@
             descargarCitasAdmin();
         }
 
-        window.enviarDisponibilidadWhatsApp = async () => {
-            const fechaInput = document.getElementById('admin-fecha-disponibilidad').value;
-            if (!fechaInput) return alert("Elige una fecha primero");
-            // Verificar si el día está abierto
-            const diaNum = new Date(fechaInput).getUTCDay();
-            if ((config.cierresEspeciales || []).includes(fechaInput)) return alert("Ese día está marcado como cerrado");
-            if (!config.diasActivos.includes(diaNum)) return alert("No trabajas ese día de la semana");
-            // Consultar citas existentes para esa fecha
-            const snap = await db.collection("citas").where("fecha", "==", fechaInput).where("barbero", "==", currentBarber).get();
-            const ocupadas = snap.docs.map(d => d.data().hora);
-            // Calcular horas disponibles
-            const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h));
-            if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
-            // Armar mensaje de WhatsApp
-            const link = window.location.origin + window.location.pathname + "?b=" + currentBarber;
-            const fechaTexto = formatFecha(fechaInput);
-            const horasTexto = disponibles.map(h => `🕐 ${h}`).join('\n');
-            
-            // Dentro de enviarDisponibilidadWhatsApp()
-            const msg = `✂️ *ESPACIOS DISPONIBLES*\n📅 ${fechaTexto}\n\n${horasTexto}\n\n🔗 *Reserva aquí:*\n${link}`;
+       window.enviarDisponibilidadWhatsApp = async () => {
+    try {
+        const fechaInput = document.getElementById('admin-fecha-disponibilidad').value;
+        if (!fechaInput) return alert("Elige una fecha primero");
+        if (!currentBarber) return alert("Error: No tienes un barberId asignado en tu perfil");
 
-            // Usa este formato que es más compatible con emojis y grupos
-            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-            window.open(whatsappUrl, '_blank');
-        };
+        // 1. Consultar citas (Aquí es donde suele fallar por falta de Índice)
+        const snap = await db.collection("citas")
+                             .where("fecha", "==", fechaInput)
+                             .where("barbero", "==", currentBarber)
+                             .get();
+        
+        const ocupadas = snap.docs.map(d => d.data().hora);
+        
+        // 2. Calcular disponibles
+        const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h));
+        
+        if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
+
+        // 3. Crear mensaje
+        const link = window.location.origin + window.location.pathname + "?b=" + currentBarber;
+        const fechaTexto = formatFecha(fechaInput);
+        const horasTexto = disponibles.map(h => `🕐 ${h}`).join('\n');
+        const msg = `✂️ *ESPACIOS DISPONIBLES*\n📅 ${fechaTexto}\n\n${horasTexto}\n\n🔗 *Reserva tu turno aquí:*\n${link}\n\n_Bgio System_`;
+
+        // 4. Abrir WhatsApp (Formato API oficial)
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+
+    } catch (error) {
+        console.error("Error completo:", error);
+        alert("Error al conectar con la base de datos. Revisa la consola (F12) para crear el índice de Firestore.");
+    }
+};
 
         async function descargarCitasAdmin() {
             const lista = document.getElementById('lista-citas');
