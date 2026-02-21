@@ -258,7 +258,7 @@
 
         // 4. Abrir WhatsApp (Formato API oficial)
         const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-        window.open(waUrl, '_blank');
+        window.location.href = waUrl;
 
     } catch (error) {
         console.error("Error completo:", error);
