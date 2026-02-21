@@ -248,8 +248,13 @@
             const link = window.location.origin + window.location.pathname + "?b=" + currentBarber;
             const fechaTexto = formatFecha(fechaInput);
             const horasTexto = disponibles.map(h => `🕐 ${h}`).join('\n');
-            const msg = `✂️ *ESPACIOS DISPONIBLES*\n📅 ${fechaTexto}\n\n${horasTexto}\n\n🔗 *Reserva tu turno aquí:*\n${link}\n\n_Bgio System_`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            
+            // Dentro de enviarDisponibilidadWhatsApp()
+            const msg = `✂️ *ESPACIOS DISPONIBLES*\n📅 ${fechaTexto}\n\n${horasTexto}\n\n🔗 *Reserva aquí:*\n${link}`;
+
+            // Usa este formato que es más compatible con emojis y grupos
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+            window.open(whatsappUrl, '_blank');
         };
 
         async function descargarCitasAdmin() {
