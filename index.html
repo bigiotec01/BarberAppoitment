@@ -91,7 +91,7 @@
 
         <section id="step-1" class="bg-card p-8 rounded-[3rem] shadow-2xl text-center">
             <h2 class="text-xl font-black mb-6 uppercase italic text-white tracking-tighter">Agenda tu recorte</h2>
-            <input type="date" id="fecha" class="block w-full bg-black border-2 border-zinc-800 p-4 rounded-2xl text-yellow-500 text-center text-xl font-bold mb-6 outline-none" style="box-sizing:border-box;">
+            <input type="date" id="fecha" class="w-full bg-black border-2 border-zinc-800 p-4 rounded-2xl text-yellow-500 text-center text-xl font-bold mb-6 outline-none" style="box-sizing:border-box;">
             <button onclick="validarYPasar(2)" class="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase">Ver Disponibilidad</button>
         </section>
         <section id="step-2" class="hidden space-y-4">
@@ -360,7 +360,9 @@
 
         async function abrirCliente() {
             document.getElementById('user-display-name').innerText = userData.nombre;
-            document.getElementById('fecha').min = new Date().toISOString().split('T')[0];
+            const hoyStr = new Date().toISOString().split('T')[0];
+            document.getElementById('fecha').min = hoyStr;
+            document.getElementById('fecha').value = hoyStr;
 
             // Determinar barbero: URL tiene prioridad, luego perfil guardado, sino mostrar selector
             currentBarber = urlBarber || userData.barberId || null;
