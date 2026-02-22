@@ -17,11 +17,9 @@
         .bg-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid #222; }
         .cita-activa-card { background: linear-gradient(135deg, #eab308 0%, #a17c06 100%); color: #000; box-shadow: 0 10px 20px rgba(234, 179, 8, 0.3); }
         .hidden { display: none !important; }
-        input[type="date"] { display: flex; justify-content: center; }
-        input[type="date"]::-webkit-datetime-edit { flex: none; text-align: center; }
-        input[type="date"]::-webkit-datetime-edit-fields-wrapper { display: flex; justify-content: center; }
-        input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
-        input[type="date"]::-webkit-inner-spin-button { display: none; }
+        input[type="date"] { text-align: center; text-align-last: center; }
+        input[type="date"]::-webkit-datetime-edit-fields-wrapper { margin: 0 auto; }
+        input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; right: 1rem; }
     </style>
 </head>
 <body class="pb-24">
@@ -91,7 +89,7 @@
 
         <section id="step-1" class="bg-card p-8 rounded-[3rem] shadow-2xl text-center">
             <h2 class="text-xl font-black mb-6 uppercase italic text-white tracking-tighter">Agenda tu recorte</h2>
-            <input type="date" id="fecha" class="w-full bg-black border-2 border-zinc-800 p-4 rounded-2xl text-yellow-500 text-center text-xl font-bold mb-6 outline-none" style="box-sizing:border-box;">
+            <input type="date" id="fecha" class="w-full bg-black border-2 border-zinc-800 p-4 rounded-2xl text-yellow-500 text-center text-xl font-bold mb-6 outline-none relative" style="box-sizing:border-box;">
             <button onclick="validarYPasar(2)" class="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase">Ver Disponibilidad</button>
         </section>
         <section id="step-2" class="hidden space-y-4">
