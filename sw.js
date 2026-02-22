@@ -1,8 +1,8 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `barber-${CACHE_VERSION}`;
+
+// index.html NO se cachea: siempre viene de la red para que las actualizaciones sean inmediatas
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/firebase-config.js'
 ];
@@ -16,33 +16,20 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys()
-      .then((keys) =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      )
-      .then(() => {
-        // Forzar recarga de todos los tabs abiertos para mostrar la nueva versión
-        return self.clients.matchAll({ type: 'window' }).then(clients => {
-          clients.forEach(client => client.navigate(client.url));
-        });
-      })
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network-first para HTML: siempre intenta obtener la versión más nueva
+  // HTML: siempre red, nunca cache
   if (e.request.headers.get('Accept')?.includes('text/html')) {
-    e.respondWith(
-      fetch(e.request).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return res;
-      }).catch(() => caches.match(e.request))
-    );
+    e.respondWith(fetch(e.request));
     return;
   }
-  // Cache-first para el resto (JS, imágenes, etc.)
+  // Resto: cache-first
   e.respondWith(
     caches.match(e.request).then((res) => res || fetch(e.request))
   );
