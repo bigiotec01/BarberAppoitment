@@ -171,6 +171,14 @@
                         </select>
                         <select id="cita-fija-hora" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none"></select>
                     </div>
+                    <select id="cita-fija-frecuencia" onchange="toggleFechaInicio()" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                        <option value="semanal">Semanal (todas las semanas)</option>
+                        <option value="bisemanal">Bisemanal (cada 2 semanas)</option>
+                    </select>
+                    <div id="cita-fija-inicio-wrap" class="hidden space-y-1">
+                        <p class="text-[9px] text-zinc-500 text-center">Fecha del primer turno (para calcular las semanas)</p>
+                        <input type="date" id="cita-fija-fecha-inicio" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                    </div>
                     <button onclick="agregarCitaFija()" class="w-full bg-zinc-700 py-3 rounded-xl text-[10px] font-black text-white uppercase">+ Agregar Cita Fija</button>
                     <div id="lista-citas-fijas" class="space-y-2 mt-2"></div>
                 </div>
@@ -339,8 +347,7 @@
 
         // 2. Calcular disponibles (excluir bloqueos globales, especiales y citas fijas)
         const bloqueosEspWA = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
-        const diaNumWA = new Date(fechaInput).getUTCDay();
-        const citasFijasWA = (config.citasFijas || []).filter(c => c.diaSemana === diaNumWA).map(c => c.hora);
+        const citasFijasWA = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
         const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h));
         
         if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
@@ -406,12 +413,13 @@
             ).join('');
             const diasNombresL = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
             const lCF = document.getElementById('lista-citas-fijas');
-            if (lCF) lCF.innerHTML = (config.citasFijas || []).map((c, i) =>
-                `<div class="bg-zinc-800 px-3 py-2 rounded-xl text-[9px] border border-yellow-500/30 flex items-center justify-between text-white">
-                    <span class="italic">📌 <b>${c.nombre}</b> · ${diasNombresL[c.diaSemana]} · ${c.hora}</span>
+            if (lCF) lCF.innerHTML = (config.citasFijas || []).map((c, i) => {
+                const freqLabel = c.frecuencia === 'bisemanal' ? 'c/2 sem' : 'semanal';
+                return `<div class="bg-zinc-800 px-3 py-2 rounded-xl text-[9px] border border-yellow-500/30 flex items-center justify-between text-white">
+                    <span class="italic">📌 <b>${c.nombre}</b> · ${diasNombresL[c.diaSemana]} · ${c.hora} · <span class="text-yellow-400">${freqLabel}</span></span>
                     <button onclick="quitarCitaFija(${i})" class="text-red-500 font-black ml-2">X</button>
-                </div>`
-            ).join('');
+                </div>`;
+            }).join('');
         };
 
         window.filtrarCitasAdmin = (tipo) => {
@@ -492,17 +500,39 @@
         };
         window.quitarBloqueoEspecial = (i) => { config.bloqueosEspeciales.splice(i, 1); renderAdminControls(); };
         window.toggleCitasFijas = () => { const p = document.getElementById('citas-fijas-panel'); const a = document.getElementById('citas-fijas-arrow'); const oculto = p.classList.toggle('hidden'); a.innerText = oculto ? '▼' : '▲'; };
+        window.toggleFechaInicio = () => {
+            const val = document.getElementById('cita-fija-frecuencia').value;
+            document.getElementById('cita-fija-inicio-wrap').classList.toggle('hidden', val !== 'bisemanal');
+        };
         window.agregarCitaFija = () => {
             const nombre = document.getElementById('cita-fija-nombre').value.trim();
             const dia = parseInt(document.getElementById('cita-fija-dia').value);
             const hora = document.getElementById('cita-fija-hora').value;
+            const frecuencia = document.getElementById('cita-fija-frecuencia').value;
             if (!nombre) return alert("Ingresa el nombre del cliente");
             if (!config.citasFijas) config.citasFijas = [];
-            config.citasFijas.push({ diaSemana: dia, hora, nombre });
+            const entrada = { diaSemana: dia, hora, nombre, frecuencia };
+            if (frecuencia === 'bisemanal') {
+                const fechaInicio = document.getElementById('cita-fija-fecha-inicio').value;
+                if (!fechaInicio) return alert("Elige la fecha del primer turno para cita bisemanal");
+                entrada.fechaInicio = fechaInicio;
+            }
+            config.citasFijas.push(entrada);
             document.getElementById('cita-fija-nombre').value = '';
             renderAdminControls();
         };
         window.quitarCitaFija = (i) => { config.citasFijas.splice(i, 1); renderAdminControls(); };
+
+        function citaFijaAplicaEnFecha(c, fecha) {
+            const diaNum = new Date(fecha).getUTCDay();
+            if (c.diaSemana !== diaNum) return false;
+            if (!c.frecuencia || c.frecuencia === 'semanal') return true;
+            if (c.frecuencia === 'bisemanal' && c.fechaInicio) {
+                const semanas = Math.round((new Date(fecha) - new Date(c.fechaInicio)) / (7 * 24 * 60 * 60 * 1000));
+                return semanas >= 0 && semanas % 2 === 0;
+            }
+            return false;
+        }
 
         async function abrirCliente() {
             document.getElementById('user-display-name').innerText = userData.nombre;
@@ -655,8 +685,7 @@
             const snap = await db.collection("citas").where("fecha", "==", f).where("barbero", "==", currentBarber).get();
             const ocupadas = snap.docs.map(d => d.data().hora); grid.innerHTML = "";
             const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === f).map(b => b.hora);
-            const diaNum2 = new Date(f).getUTCDay();
-            const citasFijasHoy = (config.citasFijas || []).filter(c => c.diaSemana === diaNum2).map(c => c.hora);
+            const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, f)).map(c => c.hora);
             horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h)) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
             if(!grid.innerHTML) grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-10 uppercase italic'>Sin horarios disponibles</p>";
         }
