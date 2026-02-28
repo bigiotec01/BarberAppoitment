@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barber Shop Pro | Bgio System</title>
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2602/2602157.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .barber-logo { width: 60px; height: 60px; background: url('https://cdn-icons-png.flaticon.com/512/2602/2602157.png') no-repeat center; background-size: contain; filter: drop-shadow(0 0 8px #eab308); margin: 0 auto 1rem; }
+        .bg-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid #222; }
+        .cita-activa-card { background: linear-gradient(135deg, #eab308 0%, #a17c06 100%); color: #000; box-shadow: 0 10px 20px rgba(234, 179, 8, 0.3); }
+        .hidden { display: none !important; }
+        select { text-align-last: center; -webkit-appearance: none; appearance: none; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <div id="loading" class="fixed inset-0 bg-black z-[200] flex flex-col items-center justify-center">
+        <div class="barber-logo animate-pulse"></div>
+        <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-4">Sincronizando Bgio System...</p>
+    </div>
+
+    <div id="view-auth" class="hidden max-w-md mx-auto p-10 flex flex-col items-center justify-center min-h-screen text-center">
+        <div class="barber-logo"></div>
+        <h1 class="text-4xl font-black italic uppercase mb-8">BARBER <span class="text-yellow-500">PRO</span></h1>
+        <div id="form-login" class="w-full space-y-4">
+            <input type="email" id="login-email" placeholder="Email" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <input type="password" id="login-pass" placeholder="Contraseña" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <button onclick="login()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-2xl uppercase">Entrar</button>
+            <p class="text-xs text-zinc-500">¿Nuevo cliente? <button onclick="toggleAuth('reg')" class="text-yellow-500 font-bold underline">Regístrate</button></p>
+        </div>
+        <div id="form-reg" class="hidden w-full space-y-4 text-left">
+            <input type="text" id="reg-nom" placeholder="Tu Nombre" autocomplete="off" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <input type="tel" id="reg-tel" placeholder="WhatsApp (Ej: 17871234567)" autocomplete="off" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <input type="email" id="reg-email" placeholder="Email" autocomplete="off" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <input type="password" id="reg-pass" placeholder="Contraseña" autocomplete="new-password" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <button onclick="registrar()" class="w-full bg-white text-black font-black py-4 rounded-2xl uppercase">Crear Cuenta</button>
+            <button onclick="toggleAuth('login')" class="w-full text-center text-xs text-zinc-500 underline mt-2">Ya tengo cuenta</button>
+        </div>
+        <p class="text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v3.5</p>
+    </div>
+
+    <div id="view-app" class="hidden max-w-md mx-auto p-5">
+        <header class="flex justify-between items-center py-6">
+            <div class="flex items-center gap-3 text-white">
+                <div class="w-8 h-8 barber-logo !m-0"></div>
+                <h3 id="user-display-name" class="text-lg font-black uppercase leading-none">...</h3>
+            </div>
+            <button onclick="logout()" class="text-[10px] bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl font-black">SALIR</button>
+        </header>
+        <div id="cita-info-container" class="hidden mb-10 text-center">
+            <div class="cita-activa-card p-6 rounded-[2.5rem]">
+                <p class="uppercase font-black text-[10px] opacity-70">Tu cita confirmada</p>
+                <h4 id="cita-activa-fecha" class="text-2xl font-black italic uppercase">...</h4>
+                <p id="cita-activa-hora" class="text-xl font-black bg-black/10 inline-block px-5 py-1 rounded-full mt-2">...</p>
+                <button id="btn-cancelar-propia" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
+            </div>
+        </div>
+
+        <!-- Selector de Barbero -->
+        <section id="step-barbero" class="hidden bg-card p-8 rounded-[3rem] shadow-2xl text-center mb-4">
+            <h2 class="text-xl font-black mb-1 uppercase italic text-white tracking-tighter">Elige tu Barbero</h2>
+            <p class="text-zinc-500 text-[10px] mb-6 uppercase tracking-widest">¿Con quién quieres tu corte?</p>
+            <div id="lista-barberos" class="space-y-3">
+                <p class="text-zinc-600 text-xs animate-pulse py-4">Cargando barberos...</p>
+            </div>
+        </section>
+
+        <!-- Barbero seleccionado (chip) -->
+        <div id="barbero-seleccionado" class="hidden mb-4 flex items-center justify-between bg-zinc-900 border border-zinc-800 px-5 py-4 rounded-2xl">
+            <div class="flex items-center gap-3">
+                <div id="barbero-avatar" class="w-9 h-9 bg-yellow-500 rounded-full flex items-center justify-center text-black font-black text-base flex-shrink-0">?</div>
+                <div>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Tu Barbero</p>
+                    <p id="barbero-nombre-display" class="text-white font-black text-sm uppercase leading-none mt-0.5">...</p>
+                </div>
+            </div>
+            <button onclick="mostrarSelectorBarbero()" class="text-[9px] text-yellow-500 font-black uppercase border border-yellow-500/30 px-3 py-1.5 rounded-lg">Cambiar</button>
+        </div>
+
+        <section id="step-1" class="bg-card p-8 rounded-[3rem] shadow-2xl text-center">
+            <h2 class="text-xl font-black mb-6 uppercase italic text-white tracking-tighter">Agenda tu recorte</h2>
+            <div class="flex gap-2 mb-6">
+                <select id="fecha-dia" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
+                <select id="fecha-mes" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
+                <select id="fecha-anio" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
+            </div>
+            <input type="hidden" id="fecha" value="">
+            <button onclick="validarYPasar(2)" class="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase">Ver Disponibilidad</button>
+        </section>
+        <section id="step-2" class="hidden space-y-4">
+            <p id="step2-fecha" class="text-center text-yellow-500 font-black text-sm uppercase italic tracking-wide"></p>
+            <div id="grid-horarios" class="grid grid-cols-3 gap-3"></div>
+            <button onclick="irAlPaso(1)" class="w-full py-4 text-zinc-500 font-bold uppercase text-[10px]">← Cambiar fecha</button>
+        </section>
+        <p class="text-center text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v3.5</p>
+    </div>
+
+    <div id="view-admin" class="hidden max-w-md mx-auto p-5 space-y-6">
+        <header class="flex justify-between items-center">
+            <h2 class="text-xl font-black text-yellow-500 italic uppercase leading-none">ADMIN PANEL</h2>
+            <button onclick="logout()" class="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl text-[10px] font-black">SALIR</button>
+        </header>
+        <button onclick="toggleQR()" class="w-full bg-white text-black font-black py-4 rounded-2xl text-[10px] uppercase italic tracking-widest">Mi QR Barbero</button>
+        <div class="bg-card p-6 rounded-[2rem] border border-zinc-800 space-y-6 text-center">
+            <div>
+                <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Días Abiertos</p>
+                <div class="grid grid-cols-7 gap-1" id="admin-dias"></div>
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
+                <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Cerrar Día Específico</p>
+                <div class="flex gap-2">
+                    <input type="date" id="admin-fecha-cierre" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                    <button onclick="agregarCierre()" class="bg-zinc-700 px-4 rounded-xl text-[10px] font-black text-white uppercase">Cerrar</button>
+                </div>
+                <div id="lista-cierres-especiales" class="flex flex-wrap gap-2 mt-3 justify-center"></div>
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
+                <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Bloquear Hora Específica</p>
+                <p class="text-[9px] text-zinc-500 mb-3 text-center">Bloquea una sola hora en un día puntual</p>
+                <div class="flex gap-2 mb-2">
+                    <input type="date" id="admin-fecha-bloqueo-esp" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                    <select id="admin-hora-bloqueo-esp" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none"></select>
+                    <button onclick="agregarBloqueoEspecial()" class="bg-red-800 px-4 rounded-xl text-[10px] font-black text-white uppercase">Bloquear</button>
+                </div>
+                <div id="lista-bloqueos-especiales" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
+                <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic text-center">Bloquear Horas Globales</p>
+                <div class="grid grid-cols-3 gap-2" id="admin-horas"></div>
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
+                <button onclick="toggleServicios()" class="w-full flex items-center justify-between">
+                    <p class="text-[10px] font-black uppercase text-yellow-500 tracking-widest italic">Servicios y Precios</p>
+                    <span id="servicios-arrow" class="text-yellow-500 text-sm">▼</span>
+                </button>
+                <div id="servicios-panel" class="hidden mt-3">
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="servicio-nombre" placeholder="Servicio (ej: Corte)" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                        <input type="number" id="servicio-precio" placeholder="$" class="w-20 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none text-center">
+                        <button onclick="agregarServicio()" class="bg-zinc-700 px-4 rounded-xl text-[10px] font-black text-white uppercase">+</button>
+                    </div>
+                    <div id="lista-servicios" class="flex flex-wrap gap-2 justify-center"></div>
+                </div>
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
+                <button onclick="toggleCitasFijas()" class="w-full flex items-center justify-between">
+                    <p class="text-[10px] font-black uppercase text-yellow-500 tracking-widest italic">Citas Fijas Recurrentes</p>
+                    <span id="citas-fijas-arrow" class="text-yellow-500 text-sm">▼</span>
+                </button>
+                <div id="citas-fijas-panel" class="hidden mt-3 space-y-2">
+                    <p class="text-[9px] text-zinc-500 text-center">Ej: Juan, todos los sábados a las 8:00 AM</p>
+                    <input type="text" id="cita-fija-nombre" placeholder="Nombre del cliente" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                    <div class="flex gap-2">
+                        <select id="cita-fija-dia" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                            <option value="0">Domingo</option>
+                            <option value="1">Lunes</option>
+                            <option value="2">Martes</option>
+                            <option value="3">Miércoles</option>
+                            <option value="4">Jueves</option>
+                            <option value="5">Viernes</option>
+                            <option value="6">Sábado</option>
+                        </select>
+                        <select id="cita-fija-hora" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none"></select>
+                    </div>
+                    <button onclick="agregarCitaFija()" class="w-full bg-zinc-700 py-3 rounded-xl text-[10px] font-black text-white uppercase">+ Agregar Cita Fija</button>
+                    <div id="lista-citas-fijas" class="space-y-2 mt-2"></div>
+                </div>
+            </div>
+            <button onclick="guardarConfig()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-2xl text-[11px] uppercase shadow-xl">GUARDAR AJUSTES</button>
+        </div>
+        <div class="bg-card border border-zinc-800 rounded-[2rem] p-6">
+            <p class="text-[10px] font-black uppercase text-yellow-500 mb-4 tracking-widest italic text-center">Resumen</p>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <p class="text-3xl font-black text-yellow-500" id="stat-hoy">-</p>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Hoy</p>
+                </div>
+                <div>
+                    <p class="text-3xl font-black text-yellow-500" id="stat-semana">-</p>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Esta semana</p>
+                </div>
+                <div>
+                    <p class="text-xl font-black text-yellow-500" id="stat-hora">-</p>
+                    <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Hora popular</p>
+                </div>
+            </div>
+        </div>
+        <!-- WhatsApp Disponibilidad -->
+        <div class="bg-card border border-zinc-800 rounded-[2rem] p-6 space-y-4">
+            <p class="text-[10px] font-black uppercase text-yellow-500 tracking-widest italic text-center">📲 Disponibilidad WhatsApp</p>
+            <p class="text-[9px] text-zinc-500 text-center">Envía los espacios libres a tu grupo de WhatsApp</p>
+            <div class="flex gap-2">
+                <input type="date" id="admin-fecha-disponibilidad" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                <button onclick="enviarDisponibilidadWhatsApp()" class="bg-green-600 px-5 rounded-xl text-[10px] font-black text-white uppercase whitespace-nowrap active:scale-95 transition-transform">Enviar</button>
+            </div>
+        </div>
+
+        <div class="flex gap-2 bg-zinc-900/50 p-1.5 rounded-2xl border border-zinc-800">
+            <button onclick="filtrarCitasAdmin('hoy')" id="f-hoy" class="flex-1 py-4 rounded-2xl text-[10px] font-black bg-yellow-500 text-black">CITAS HOY</button>
+            <button onclick="filtrarCitasAdmin('todas')" id="f-todas" class="flex-1 py-4 rounded-2xl text-[10px] font-black text-zinc-500">TODAS</button>
+        </div>
+        <div id="lista-citas" class="space-y-3"></div>
+    </div>
+
+    <div id="qrModal" class="hidden fixed inset-0 flex items-center justify-center p-8 z-[100] bg-black/95">
+        <div class="bg-zinc-900 p-8 rounded-[2.5rem] text-center border border-zinc-800 w-full max-w-xs shadow-2xl">
+            <div id="qrcode" class="bg-white p-5 rounded-3xl inline-block mb-6 shadow-xl"></div>
+            <button onclick="toggleQR()" class="w-full bg-zinc-800 py-4 rounded-2xl font-black uppercase text-[10px] italic text-white">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="servicioModal" class="hidden fixed inset-0 flex items-center justify-center p-8 z-[100] bg-black/95">
+        <div class="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 w-full max-w-xs shadow-2xl">
+            <p class="text-[10px] font-black uppercase text-yellow-500 mb-1 tracking-widest italic text-center">Elige tu Servicio</p>
+            <p class="text-zinc-500 text-[9px] text-center mb-6 uppercase">¿Qué corte vas a hacerte?</p>
+            <div id="lista-servicios-cliente" class="space-y-3 mb-6"></div>
+            <button onclick="cerrarServicioModal()" class="w-full bg-zinc-800 py-4 rounded-2xl font-black uppercase text-[10px] italic text-white">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import firebaseConfig from './firebase-config.js';
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const messaging = firebase.messaging();
+
+        const VAPID_KEY = 'BOo7z8_7VO1efgsR5gR8ix21uNnUtcXOr-x6Y3vSc0LNvwDbD6G6A8ZEyErEdJSxc2iecP35FMrlt680SuBJGNY';
+
+        async function activarNotificaciones(uid) {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') return;
+                const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                await navigator.serviceWorker.ready;
+                const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+                if (token) await db.collection('usuarios').doc(uid).update({ fcmToken: token });
+            } catch (e) {
+                console.warn('Notificaciones no activadas:', e);
+            }
+        }
+
+        messaging.onMessage((payload) => {
+            const { title, body } = payload.data;
+            const n = new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png' });
+            setTimeout(() => n.close(), 6000);
+        });
+
+        const horasBase = ["07:00 AM", "07:30 AM", "08:00 AM", "08:30 AM", "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM", "05:00 PM", "05:30 PM"];
+        const diasNombres = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+        let userData = null;
+        let _registrando = false;
+        const urlBarber = new URLSearchParams(window.location.search).get('b');
+        let currentBarber = urlBarber; // null si no viene de un QR/link específico
+        let config = { diasActivos: [1,2,3,4,5,6], horasBloqueadas: [], cierresEspeciales: [], servicios: [], bloqueosEspeciales: [], citasFijas: [] };
+        let todasLasCitas = [];
+        const parseHora = (h) => { const [t,p] = h.split(' '); let [hr,min] = t.split(':').map(Number); if(p==='PM'&&hr!==12) hr+=12; if(p==='AM'&&hr===12) hr=0; return hr*60+min; };
+        const formatFecha = (fecha) => {
+            const hoy = new Date().toISOString().split('T')[0];
+            const mananaD = new Date(); mananaD.setDate(mananaD.getDate() + 1);
+            const manana = mananaD.toISOString().split('T')[0];
+            if (fecha === hoy) return 'Hoy';
+            if (fecha === manana) return 'Mañana';
+            const [y, m, d] = fecha.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            return `${dias[dt.getDay()]} ${d} de ${meses[m - 1]}`;
+        };
+
+        auth.onAuthStateChanged(async (user) => {
+            document.getElementById('loading').classList.add('hidden');
+            if (user) {
+                const doc = await db.collection("usuarios").doc(user.uid).get();
+                userData = doc.data();
+                if (!userData) { if (_registrando) return; auth.signOut(); location.reload(); return; }
+                if (userData.rol === 'admin') {
+                    currentBarber = userData.barberId || null;
+                    document.getElementById('view-admin').classList.remove('hidden');
+                    document.getElementById('view-app').classList.add('hidden');
+                    document.getElementById('view-auth').classList.add('hidden');
+                    abrirAdmin();
+                } else {
+                    document.getElementById('view-app').classList.remove('hidden');
+                    document.getElementById('view-admin').classList.add('hidden');
+                    document.getElementById('view-auth').classList.add('hidden');
+                    abrirCliente();
+                }
+            } else {
+                document.getElementById('view-auth').classList.remove('hidden');
+                document.getElementById('view-admin').classList.add('hidden');
+                document.getElementById('view-app').classList.add('hidden');
+            }
+        });
+
+        async function abrirAdmin() {
+            if (!currentBarber) { alert("Tu cuenta no tiene un barberId asignado. Ve a Firestore y agrega el campo barberId a tu usuario."); return; }
+            activarNotificaciones(auth.currentUser.uid);
+            const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
+            if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; }
+            const myLink = window.location.origin + window.location.pathname + "?b=" + currentBarber;
+            document.getElementById("qrcode").innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), { text: myLink, width: 200, height: 200 });
+            // Fecha por defecto para disponibilidad WhatsApp
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('admin-fecha-disponibilidad').value = hoy;
+            document.getElementById('admin-fecha-disponibilidad').min = hoy;
+            document.getElementById('admin-fecha-cierre').value = hoy;
+            document.getElementById('admin-fecha-cierre').min = hoy;
+            document.getElementById('admin-fecha-bloqueo-esp').value = hoy;
+            document.getElementById('admin-fecha-bloqueo-esp').min = hoy;
+            poblarSelectHoras();
+            renderAdminControls();
+            descargarCitasAdmin();
+        }
+
+       window.enviarDisponibilidadWhatsApp = async () => {
+    try {
+        const fechaInput = document.getElementById('admin-fecha-disponibilidad').value;
+        if (!fechaInput) return alert("Elige una fecha primero");
+        if (!currentBarber) return alert("Error: No tienes un barberId asignado en tu perfil");
+
+        // 1. Consultar citas (Aquí es donde suele fallar por falta de Índice)
+        const snap = await db.collection("citas")
+                             .where("fecha", "==", fechaInput)
+                             .where("barbero", "==", currentBarber)
+                             .get();
+        
+        const ocupadas = snap.docs.map(d => d.data().hora);
+
+        // 2. Calcular disponibles (excluir bloqueos globales, especiales y citas fijas)
+        const bloqueosEspWA = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
+        const diaNumWA = new Date(fechaInput).getUTCDay();
+        const citasFijasWA = (config.citasFijas || []).filter(c => c.diaSemana === diaNumWA).map(c => c.hora);
+        const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h));
+        
+        if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
+
+        // 3. Crear mensaje
+        const link = window.location.origin + window.location.pathname + "?b=" + currentBarber;
+        const fechaTexto = formatFecha(fechaInput);
+        const horasTexto = disponibles.map(h => `🕐 ${h}`).join('\n');
+        const msg = `*ESPACIOS DISPONIBLES*\n📅 *${fechaTexto}*\n\n${horasTexto}\n\n🔗 Reserva: ${link}`;
+
+        // 4. Abrir WhatsApp (Formato API oficial)
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+        window.location.href = waUrl;
+
+    } catch (error) {
+        console.error("Error completo:", error);
+        alert("Error al conectar con la base de datos. Revisa la consola (F12) para crear el índice de Firestore.");
+    }
+};
+
+        let _citasListener = null;
+        function descargarCitasAdmin() {
+            const lista = document.getElementById('lista-citas');
+            lista.innerHTML = "<p class='text-center opacity-30 text-xs animate-pulse'>CARGANDO...</p>";
+            const hoy = new Date().toISOString().split('T')[0];
+            if (_citasListener) _citasListener();
+            _citasListener = db.collection("citas").where("barbero", "==", currentBarber).onSnapshot(snap => {
+                const batch = db.batch();
+                let hayViejas = false;
+                snap.docs.forEach(doc => { if (doc.data().fecha < hoy) { batch.delete(doc.ref); hayViejas = true; } });
+                if (hayViejas) batch.commit();
+                todasLasCitas = snap.docs.filter(d => d.data().fecha >= hoy).map(doc => ({ id: doc.id, ...doc.data() }));
+                filtrarCitasAdmin('hoy');
+                renderAdminControls();
+                renderStats();
+            });
+        }
+
+        window.renderAdminControls = () => {
+            const dG = document.getElementById('admin-dias'), hG = document.getElementById('admin-horas'), lE = document.getElementById('lista-cierres-especiales');
+            dG.innerHTML = diasNombres.map((d, i) =>
+                `<button onclick="toggleDia(${i})" class="text-[10px] p-3 rounded-xl font-black ${config.diasActivos.includes(i) ? 'bg-yellow-500 text-black' : 'bg-zinc-800 text-zinc-500'}">${d}</button>`
+            ).join('');
+            const hoy = new Date().toISOString().split('T')[0];
+            const horasOcupadasHoy = todasLasCitas.filter(c => c.fecha === hoy).map(c => c.hora);
+            hG.innerHTML = horasBase.map(h => {
+                let cls;
+                if (config.horasBloqueadas?.includes(h)) cls = 'bg-red-900 border-red-500 text-white';
+                else if (horasOcupadasHoy.includes(h)) cls = 'bg-yellow-600/20 border-yellow-500 text-yellow-400';
+                else cls = 'bg-zinc-800 border-zinc-700 text-zinc-400';
+                return `<button onclick="toggleHora('${h}')" class="text-[9px] p-3 rounded-xl border ${cls}">${h}</button>`;
+            }).join('');
+            lE.innerHTML = (config.cierresEspeciales || []).map(f =>
+                `<div class="bg-zinc-800 px-3 py-1 rounded-full text-[9px] border border-yellow-500/30 flex items-center gap-2 text-white italic">${f} <button onclick="quitarCierre('${f}')" class="text-red-500 font-black">X</button></div>`
+            ).join('');
+            const lBE = document.getElementById('lista-bloqueos-especiales');
+            if (lBE) lBE.innerHTML = (config.bloqueosEspeciales || []).map((b, i) =>
+                `<div class="bg-red-950 px-3 py-1 rounded-full text-[9px] border border-red-500/40 flex items-center gap-2 text-white italic">${b.fecha} ${b.hora} <button onclick="quitarBloqueoEspecial(${i})" class="text-red-400 font-black">X</button></div>`
+            ).join('');
+            const lS = document.getElementById('lista-servicios');
+            if (lS) lS.innerHTML = (config.servicios || []).map((s, i) =>
+                `<div class="bg-zinc-800 px-3 py-1 rounded-full text-[9px] border border-yellow-500/30 flex items-center gap-2 text-white italic">✂️ ${s.nombre} · $${s.precio} <button onclick="quitarServicio(${i})" class="text-red-500 font-black">X</button></div>`
+            ).join('');
+            const diasNombresL = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
+            const lCF = document.getElementById('lista-citas-fijas');
+            if (lCF) lCF.innerHTML = (config.citasFijas || []).map((c, i) =>
+                `<div class="bg-zinc-800 px-3 py-2 rounded-xl text-[9px] border border-yellow-500/30 flex items-center justify-between text-white">
+                    <span class="italic">📌 <b>${c.nombre}</b> · ${diasNombresL[c.diaSemana]} · ${c.hora}</span>
+                    <button onclick="quitarCitaFija(${i})" class="text-red-500 font-black ml-2">X</button>
+                </div>`
+            ).join('');
+        };
+
+        window.filtrarCitasAdmin = (tipo) => {
+            const lista = document.getElementById('lista-citas'); const hoy = new Date().toISOString().split('T')[0];
+            ['hoy', 'todas'].forEach(t => document.getElementById(`f-${t}`).className = t === tipo ? "flex-1 py-4 rounded-2xl text-[10px] font-black bg-yellow-500 text-black" : "flex-1 py-4 rounded-2xl text-[10px] font-black text-zinc-500");
+            let filtradas = tipo === 'hoy' ? todasLasCitas.filter(c => c.fecha === hoy) : todasLasCitas;
+            if (!filtradas.length) { lista.innerHTML = "<p class='text-center py-10 opacity-20 text-[10px] font-black italic uppercase'>Sin Citas</p>"; return; }
+            const sorted = [...filtradas].sort((a,b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora));
+            const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+            let proximaId = null;
+            if (tipo === 'hoy') {
+                const proxima = sorted.find(c => parseHora(c.hora) >= nowMins);
+                if (proxima) proximaId = proxima.id;
+            }
+            lista.innerHTML = sorted.map(c => {
+                const msg = encodeURIComponent(`Hola ${c.nombre}, recordatorio de tu recorte con Bgio System hoy ${c.fecha} a las ${c.hora}.`);
+                let cardClass = 'bg-card border border-zinc-800';
+                let badge = '';
+                if (tipo === 'hoy') {
+                    if (c.id === proximaId) {
+                        cardClass = 'bg-yellow-500/10 border border-yellow-500';
+                        badge = `<span class="text-[8px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded-full uppercase ml-2">PRÓXIMA</span>`;
+                    } else if (parseHora(c.hora) < nowMins) {
+                        cardClass = 'bg-card border border-zinc-800 opacity-40';
+                    }
+                }
+                const servicioTag = c.servicio ? `<span class="text-[8px] bg-zinc-700 text-yellow-400 font-black px-2 py-0.5 rounded-full uppercase ml-1">✂️ ${c.servicio} · $${c.precio}</span>` : '';
+                return `<div class="${cardClass} p-5 rounded-3xl flex justify-between items-center"><div><p class="font-black text-sm uppercase text-white flex items-center gap-2">${c.nombre}${badge}</p><p class="text-yellow-500 font-bold text-[10px] italic">${formatFecha(c.fecha)} · ${c.hora}</p>${servicioTag}</div><div class="flex items-center gap-4"><a href="https://wa.me/${c.tel}?text=${msg}" target="_blank" class="bg-green-600 p-2 rounded-full"><svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.312.145.353.498 1.213.542 1.3.043.087.072.188.014.303-.058.116-.087.188-.173.289l-.26.303c-.087.101-.177.211-.077.383.1.173.444.733.953 1.185.656.584 1.21.765 1.383.852.173.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a><button onclick="borrarCitaAdmin('${c.id}')" class="bg-red-900/40 w-11 h-11 flex items-center justify-center rounded-full text-red-500 font-black">X</button></div></div>`;
+            }).join('');
+        };
+
+        function renderStats() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const ahora = new Date();
+            const diaSemana = ahora.getDay();
+            const lunes = new Date(ahora);
+            lunes.setDate(ahora.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
+            const domingo = new Date(lunes);
+            domingo.setDate(lunes.getDate() + 6);
+            const lunesStr = lunes.toISOString().split('T')[0];
+            const domingoStr = domingo.toISOString().split('T')[0];
+            const hoyCount = todasLasCitas.filter(c => c.fecha === hoy).length;
+            const semanaCount = todasLasCitas.filter(c => c.fecha >= lunesStr && c.fecha <= domingoStr).length;
+            const horaCount = {};
+            todasLasCitas.forEach(c => { horaCount[c.hora] = (horaCount[c.hora] || 0) + 1; });
+            const horaPopular = Object.entries(horaCount).sort((a,b) => b[1]-a[1])[0]?.[0] || '-';
+            document.getElementById('stat-hoy').textContent = hoyCount;
+            document.getElementById('stat-semana').textContent = semanaCount;
+            document.getElementById('stat-hora').textContent = horaPopular;
+        }
+
+        window.guardarConfig = async () => { await db.collection("config").doc(`horarios_${currentBarber}`).set(config); alert("Ajustes Guardados ✅"); };
+        window.toggleDia = (i) => { if(config.diasActivos.includes(i)) config.diasActivos = config.diasActivos.filter(x => x !== i); else config.diasActivos.push(i); renderAdminControls(); };
+        window.toggleHora = (h) => { if(!config.horasBloqueadas) config.horasBloqueadas = []; if(config.horasBloqueadas.includes(h)) config.horasBloqueadas = config.horasBloqueadas.filter(x => x !== h); else config.horasBloqueadas.push(h); renderAdminControls(); };
+        window.agregarCierre = () => { const f = document.getElementById('admin-fecha-cierre').value; if(f && !config.cierresEspeciales.includes(f)) { config.cierresEspeciales.push(f); renderAdminControls(); } };
+        window.quitarCierre = (f) => { config.cierresEspeciales = config.cierresEspeciales.filter(x => x !== f); renderAdminControls(); };
+        window.toggleServicios = () => { const p = document.getElementById('servicios-panel'); const a = document.getElementById('servicios-arrow'); const oculto = p.classList.toggle('hidden'); a.innerText = oculto ? '▼' : '▲'; };
+        window.agregarServicio = () => { const n = document.getElementById('servicio-nombre').value.trim(); const p = parseFloat(document.getElementById('servicio-precio').value); if(!n || isNaN(p) || p < 0) return; if(!config.servicios) config.servicios = []; config.servicios.push({ nombre: n, precio: p }); document.getElementById('servicio-nombre').value = ''; document.getElementById('servicio-precio').value = ''; renderAdminControls(); };
+        window.quitarServicio = (i) => { config.servicios.splice(i, 1); renderAdminControls(); };
+        window.borrarCitaAdmin = async (id) => { if(confirm("¿Eliminar?")) { await db.collection("citas").doc(id).delete().then(descargarCitasAdmin); } };
+
+        function poblarSelectHoras() {
+            const opts = horasBase.map(h => `<option value="${h}">${h}</option>`).join('');
+            const sB = document.getElementById('admin-hora-bloqueo-esp');
+            const sC = document.getElementById('cita-fija-hora');
+            if (sB) sB.innerHTML = opts;
+            if (sC) sC.innerHTML = opts;
+        }
+        window.agregarBloqueoEspecial = () => {
+            const f = document.getElementById('admin-fecha-bloqueo-esp').value;
+            const h = document.getElementById('admin-hora-bloqueo-esp').value;
+            if (!f || !h) return alert("Elige fecha y hora");
+            if (!config.bloqueosEspeciales) config.bloqueosEspeciales = [];
+            if (!config.bloqueosEspeciales.find(b => b.fecha === f && b.hora === h)) {
+                config.bloqueosEspeciales.push({ fecha: f, hora: h });
+                renderAdminControls();
+            }
+        };
+        window.quitarBloqueoEspecial = (i) => { config.bloqueosEspeciales.splice(i, 1); renderAdminControls(); };
+        window.toggleCitasFijas = () => { const p = document.getElementById('citas-fijas-panel'); const a = document.getElementById('citas-fijas-arrow'); const oculto = p.classList.toggle('hidden'); a.innerText = oculto ? '▼' : '▲'; };
+        window.agregarCitaFija = () => {
+            const nombre = document.getElementById('cita-fija-nombre').value.trim();
+            const dia = parseInt(document.getElementById('cita-fija-dia').value);
+            const hora = document.getElementById('cita-fija-hora').value;
+            if (!nombre) return alert("Ingresa el nombre del cliente");
+            if (!config.citasFijas) config.citasFijas = [];
+            config.citasFijas.push({ diaSemana: dia, hora, nombre });
+            document.getElementById('cita-fija-nombre').value = '';
+            renderAdminControls();
+        };
+        window.quitarCitaFija = (i) => { config.citasFijas.splice(i, 1); renderAdminControls(); };
+
+        async function abrirCliente() {
+            document.getElementById('user-display-name').innerText = userData.nombre;
+            inicializarFechaPicker();
+
+            // Determinar barbero: URL tiene prioridad, luego perfil guardado, sino mostrar selector
+            currentBarber = urlBarber || userData.barberId || null;
+
+            if (currentBarber) {
+                const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
+                if (confDoc.exists) config = confDoc.data();
+                await mostrarBarberActivo();
+                obtenerCitaPendiente(auth.currentUser.uid);
+            } else {
+                // Sin barbero asignado: ocultar step-1 y mostrar selector
+                document.getElementById('step-1').classList.add('hidden');
+                mostrarSelectorBarbero();
+            }
+        }
+
+        async function mostrarBarberActivo() {
+            // Buscar el nombre del barbero entre los admins
+            const snap = await db.collection("usuarios").where("rol", "==", "admin").get();
+            const barber = snap.docs.map(d => d.data()).find(b => b.barberId === currentBarber);
+            const nombre = barber ? barber.nombre : currentBarber;
+            const inicial = nombre ? nombre[0].toUpperCase() : '?';
+            document.getElementById('barbero-nombre-display').innerText = nombre;
+            document.getElementById('barbero-avatar').innerText = inicial;
+            document.getElementById('barbero-seleccionado').classList.remove('hidden');
+            document.getElementById('step-barbero').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+        }
+
+        async function cargarBarberos() {
+            const snap = await db.collection("usuarios").where("rol", "==", "admin").get();
+            const barberos = snap.docs.map(d => d.data()).filter(b => b.barberId);
+            const lista = document.getElementById('lista-barberos');
+            if (barberos.length === 0) {
+                lista.innerHTML = "<p class='text-zinc-500 text-xs py-4 text-center'>No hay barberos disponibles en este momento</p>";
+                return;
+            }
+            lista.innerHTML = barberos.map(b => {
+                const nombre = b.nombre || b.barberId || '?';
+                const inicial = nombre[0].toUpperCase();
+                const barberIdSafe = b.barberId.replace(/'/g, "\\'");
+                const nombreSafe = nombre.replace(/'/g, "\\'");
+                return `<button onclick="seleccionarBarbero('${barberIdSafe}', '${nombreSafe}')"
+                    class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-left flex items-center gap-4 active:scale-95 transition-transform active:border-yellow-500">
+                    <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-black font-black text-xl flex-shrink-0">${inicial}</div>
+                    <div>
+                        <p class="font-black text-white uppercase text-sm">${nombre}</p>
+                        <p class="text-zinc-500 text-[9px] uppercase font-bold mt-0.5">Barbero · Bgio System</p>
+                    </div>
+                    <div class="ml-auto text-yellow-500 text-lg">›</div>
+                </button>`;
+            }).join('');
+        }
+
+        window.seleccionarBarbero = async (barberId, nombre) => {
+            currentBarber = barberId;
+            // Guardar elección en el perfil del cliente
+            await db.collection("usuarios").doc(auth.currentUser.uid).update({ barberId: barberId });
+            userData.barberId = barberId;
+            // Actualizar chip de barbero
+            document.getElementById('barbero-nombre-display').innerText = nombre;
+            document.getElementById('barbero-avatar').innerText = nombre ? nombre[0].toUpperCase() : '?';
+            document.getElementById('barbero-seleccionado').classList.remove('hidden');
+            document.getElementById('step-barbero').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('cita-info-container').classList.add('hidden');
+            // Cargar config del barbero seleccionado
+            const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
+            if (confDoc.exists) config = confDoc.data();
+            obtenerCitaPendiente(auth.currentUser.uid);
+        };
+
+        window.mostrarSelectorBarbero = () => {
+            document.getElementById('step-barbero').classList.remove('hidden');
+            document.getElementById('barbero-seleccionado').classList.add('hidden');
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('cita-info-container').classList.add('hidden');
+            cargarBarberos();
+        };
+
+        async function obtenerCitaPendiente(uid) {
+            const hoy = new Date().toISOString().split('T')[0];
+            const snap = await db.collection("citas").where("uid", "==", uid).where("barbero", "==", currentBarber).get();
+            const cita = snap.docs.map(d => ({id: d.id, ...d.data()})).find(c => c.fecha >= hoy);
+            if(cita) {
+                document.getElementById('cita-info-container').classList.remove('hidden');
+                document.getElementById('cita-activa-fecha').innerText = formatFecha(cita.fecha);
+                document.getElementById('cita-activa-hora').innerText = cita.hora;
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
+            }
+        }
+
+        function inicializarFechaPicker() {
+            const hoy = new Date();
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const mesEl = document.getElementById('fecha-mes');
+            const diaEl = document.getElementById('fecha-dia');
+            const anioEl = document.getElementById('fecha-anio');
+            const anioActual = hoy.getFullYear();
+            mesEl.innerHTML = meses.map((m, i) => `<option value="${i+1}">${m}</option>`).join('');
+            anioEl.innerHTML = `<option value="${anioActual}">${anioActual}</option><option value="${anioActual+1}">${anioActual+1}</option>`;
+            mesEl.value = hoy.getMonth() + 1;
+            anioEl.value = anioActual;
+            actualizarDias();
+            diaEl.value = hoy.getDate();
+            actualizarFecha();
+        }
+
+        function actualizarDias() {
+            const diaEl = document.getElementById('fecha-dia');
+            const mes = parseInt(document.getElementById('fecha-mes').value);
+            const anio = parseInt(document.getElementById('fecha-anio').value);
+            const diasEnMes = new Date(anio, mes, 0).getDate();
+            const valorActual = parseInt(diaEl.value) || 1;
+            diaEl.innerHTML = Array.from({length: diasEnMes}, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('');
+            diaEl.value = Math.min(valorActual, diasEnMes);
+        }
+
+        window.actualizarFecha = () => {
+            actualizarDias();
+            const mes = String(document.getElementById('fecha-mes').value).padStart(2, '0');
+            const dia = String(document.getElementById('fecha-dia').value).padStart(2, '0');
+            const anio = document.getElementById('fecha-anio').value;
+            document.getElementById('fecha').value = `${anio}-${mes}-${dia}`;
+        };
+
+        window.validarYPasar = async (p) => {
+            const f = document.getElementById('fecha').value;
+            if(!f) return alert("Elige fecha");
+            const hoy = new Date().toISOString().split('T')[0];
+            if(f < hoy) return alert("Elige una fecha a partir de hoy");
+            irAlPaso(p); cargarHoras(f);
+        };
+        window.irAlPaso = (n) => { document.getElementById('step-1').classList.toggle('hidden', n!==1); document.getElementById('step-2').classList.toggle('hidden', n!==2); };
+        
+        async function cargarHoras(f) {
+            const grid = document.getElementById('grid-horarios');
+            document.getElementById('step2-fecha').innerText = formatFecha(f);
+            grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 text-xs animate-pulse py-8'>Verificando disponibilidad...</p>";
+            const diaNum = new Date(f).getUTCDay();
+            if((config.cierresEspeciales || []).includes(f)) { grid.innerHTML = "<p class='col-span-3 text-center text-red-500 font-black py-10 text-xs uppercase italic'>Día cerrado</p>"; return; }
+            if(!config.diasActivos.includes(diaNum)) { grid.innerHTML = "<p class='col-span-3 text-center text-red-500 font-black py-10 text-xs uppercase italic'>Cerrado este día</p>"; return; }
+            const snap = await db.collection("citas").where("fecha", "==", f).where("barbero", "==", currentBarber).get();
+            const ocupadas = snap.docs.map(d => d.data().hora); grid.innerHTML = "";
+            const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === f).map(b => b.hora);
+            const diaNum2 = new Date(f).getUTCDay();
+            const citasFijasHoy = (config.citasFijas || []).filter(c => c.diaSemana === diaNum2).map(c => c.hora);
+            horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h)) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
+            if(!grid.innerHTML) grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-10 uppercase italic'>Sin horarios disponibles</p>";
+        }
+
+        let _citaPendienteHora = null, _citaPendienteFecha = null;
+
+        function confirmarCita(h, f) {
+            const servicios = config.servicios || [];
+            if (servicios.length === 0) {
+                abrirConfirmacionCita(h, f, null, null);
+                return;
+            }
+            _citaPendienteHora = h;
+            _citaPendienteFecha = f;
+            const lista = document.getElementById('lista-servicios-cliente');
+            lista.innerHTML = servicios.map((s, i) =>
+                `<button onclick="elegirServicio(${i})" class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-2xl flex justify-between items-center active:scale-95 transition-transform active:border-yellow-500">
+                    <span class="font-black text-sm text-white">✂️ ${s.nombre}</span>
+                    <span class="text-yellow-500 font-black text-sm">$${s.precio}</span>
+                </button>`
+            ).join('');
+            document.getElementById('servicioModal').classList.remove('hidden');
+        }
+
+        window.elegirServicio = async (i) => {
+            const s = config.servicios[i];
+            document.getElementById('servicioModal').classList.add('hidden');
+            await abrirConfirmacionCita(_citaPendienteHora, _citaPendienteFecha, s.nombre, s.precio);
+        };
+
+        window.cerrarServicioModal = () => { document.getElementById('servicioModal').classList.add('hidden'); };
+
+        async function abrirConfirmacionCita(h, f, servicio, precio) {
+            const resumen = servicio ? `${servicio} ($${precio})` : 'Sin servicio especificado';
+            if(confirm(`¿Confirmar cita el ${formatFecha(f)} a las ${h}?\nServicio: ${resumen}`)) {
+                let adminToken = null;
+                try {
+                    const adminSnap = await db.collection("usuarios").where("rol","==","admin").where("barberId","==",currentBarber).get();
+                    adminToken = adminSnap.docs[0]?.data()?.fcmToken || null;
+                } catch(e) {}
+                const datos = { fecha:f, hora:h, barbero: currentBarber, nombre: userData.nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() };
+                if (servicio) { datos.servicio = servicio; datos.precio = precio; }
+                const docRef = await db.collection("citas").add(datos);
+                document.getElementById('cita-activa-fecha').innerText = formatFecha(f);
+                document.getElementById('cita-activa-hora').innerText = h;
+                document.getElementById('cita-info-container').classList.remove('hidden');
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('step-2').classList.add('hidden');
+                document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) docRef.delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
+            }
+        }
+
+        window.login = async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            if (!email || !pass) return alert("Completa todos los campos");
+            try { await auth.signInWithEmailAndPassword(email, pass); }
+            catch(e) { alert(['auth/user-not-found','auth/wrong-password','auth/invalid-credential'].includes(e.code) ? 'Email o contraseña incorrectos' : 'Error de acceso'); }
+        };
+        window.logout = () => { auth.signOut(); location.reload(); };
+        window.toggleAuth = (t) => { document.getElementById('form-login').classList.toggle('hidden', t==='reg'); document.getElementById('form-reg').classList.toggle('hidden', t==='login'); if(t==='reg') { ['reg-nom','reg-tel','reg-email','reg-pass'].forEach(id => document.getElementById(id).value = ''); } };
+        window.toggleQR = () => document.getElementById('qrModal').classList.toggle('hidden');
+        window.registrar = async () => {
+            const nom = document.getElementById('reg-nom').value.trim();
+            const tel = document.getElementById('reg-tel').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            if (!nom || !tel || !email || !pass) return alert("Completa todos los campos");
+            try {
+                _registrando = true;
+                const r = await auth.createUserWithEmailAndPassword(email, pass);
+                const datos = { nombre: nom, telefono: tel, email: email, rol: 'cliente', barberId: urlBarber || null };
+                await db.collection("usuarios").doc(r.user.uid).set(datos);
+                userData = datos;
+                _registrando = false;
+                document.getElementById('view-app').classList.remove('hidden');
+                document.getElementById('view-auth').classList.add('hidden');
+                abrirCliente();
+            } catch(e) {
+                _registrando = false;
+                alert(e.code === 'auth/email-already-in-use' ? 'Este email ya está registrado' : 'Error al crear cuenta');
+            }
+        };
+    </script>
+</body>
+</html>
