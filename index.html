@@ -128,6 +128,24 @@
                 <div id="lista-cierres-especiales" class="flex flex-wrap gap-2 mt-3 justify-center"></div>
             </div>
             <div class="border-t border-zinc-800 pt-4">
+                <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Horario de Cierre por Día</p>
+                <p class="text-[9px] text-zinc-500 mb-3 text-center">Ej: los Sábados no trabajar después de las 3:00 PM</p>
+                <div class="flex gap-2 mb-2">
+                    <select id="bloqueo-semanal-dia" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                        <option value="0">Domingo</option>
+                        <option value="1">Lunes</option>
+                        <option value="2">Martes</option>
+                        <option value="3">Miércoles</option>
+                        <option value="4">Jueves</option>
+                        <option value="5">Viernes</option>
+                        <option value="6">Sábado</option>
+                    </select>
+                    <select id="bloqueo-semanal-hora" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none"></select>
+                    <button onclick="agregarBloqueoSemanal()" class="bg-red-800 px-4 rounded-xl text-[10px] font-black text-white uppercase">Aplicar</button>
+                </div>
+                <div id="lista-bloqueos-semanales" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
                 <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Bloquear Hora Específica</p>
                 <p class="text-[9px] text-zinc-500 mb-3 text-center">Bloquea una sola hora en un día puntual</p>
                 <div class="flex gap-2 mb-2">
@@ -319,7 +337,7 @@
             if (!currentBarber) { alert("Tu cuenta no tiene un barberId asignado. Ve a Firestore y agrega el campo barberId a tu usuario."); return; }
             activarNotificaciones(auth.currentUser.uid);
             const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
-            if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; }
+            if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; if(!config.bloqueosSemanales) config.bloqueosSemanales = []; }
             document.getElementById('admin-nombre-barberia').value = config.nombreBarberia || '';
             const myLink = `https://georgiefalesalon.com/?b=${currentBarber}`;
             document.getElementById("qrcode").innerHTML = "";
@@ -354,7 +372,9 @@
         // 2. Calcular disponibles (excluir bloqueos globales, especiales y citas fijas)
         const bloqueosEspWA = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
         const citasFijasWA = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
-        const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h));
+        const diaNumWA = new Date(fechaInput).getUTCDay();
+        const bloqueoSemanalWA = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNumWA);
+        const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h) && !(bloqueoSemanalWA && parseHora(h) >= parseHora(bloqueoSemanalWA.horaCorte)));
         
         if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
 
@@ -412,6 +432,10 @@
             const lBE = document.getElementById('lista-bloqueos-especiales');
             if (lBE) lBE.innerHTML = (config.bloqueosEspeciales || []).map((b, i) =>
                 `<div class="bg-red-950 px-3 py-1 rounded-full text-[9px] border border-red-500/40 flex items-center gap-2 text-white italic">${b.fecha} ${b.hora} <button onclick="quitarBloqueoEspecial(${i})" class="text-red-400 font-black">X</button></div>`
+            ).join('');
+            const lBS = document.getElementById('lista-bloqueos-semanales');
+            if (lBS) lBS.innerHTML = (config.bloqueosSemanales || []).map(b =>
+                `<div class="bg-red-950 px-3 py-1 rounded-full text-[9px] border border-red-500/40 flex items-center gap-2 text-white italic">${diasNombres[b.diaSemana]} desde ${b.horaCorte} <button onclick="quitarBloqueoSemanal(${b.diaSemana})" class="text-red-400 font-black">X</button></div>`
             ).join('');
             const lS = document.getElementById('lista-servicios');
             if (lS) lS.innerHTML = (config.servicios || []).map((s, i) =>
@@ -516,6 +540,15 @@
         window.toggleHora = (h) => { if(!config.horasBloqueadas) config.horasBloqueadas = []; if(config.horasBloqueadas.includes(h)) config.horasBloqueadas = config.horasBloqueadas.filter(x => x !== h); else config.horasBloqueadas.push(h); renderAdminControls(); };
         window.agregarCierre = () => { const f = document.getElementById('admin-fecha-cierre').value; if(f && !config.cierresEspeciales.includes(f)) { config.cierresEspeciales.push(f); renderAdminControls(); } };
         window.quitarCierre = (f) => { config.cierresEspeciales = config.cierresEspeciales.filter(x => x !== f); renderAdminControls(); };
+        window.agregarBloqueoSemanal = () => {
+            const dia = parseInt(document.getElementById('bloqueo-semanal-dia').value);
+            const hora = document.getElementById('bloqueo-semanal-hora').value;
+            if (!config.bloqueosSemanales) config.bloqueosSemanales = [];
+            config.bloqueosSemanales = config.bloqueosSemanales.filter(b => b.diaSemana !== dia);
+            config.bloqueosSemanales.push({ diaSemana: dia, horaCorte: hora });
+            renderAdminControls();
+        };
+        window.quitarBloqueoSemanal = (dia) => { config.bloqueosSemanales = (config.bloqueosSemanales || []).filter(b => b.diaSemana !== dia); renderAdminControls(); };
         window.toggleServicios = () => { const p = document.getElementById('servicios-panel'); const a = document.getElementById('servicios-arrow'); const oculto = p.classList.toggle('hidden'); a.innerText = oculto ? '▼' : '▲'; };
         window.agregarServicio = () => { const n = document.getElementById('servicio-nombre').value.trim(); const p = parseFloat(document.getElementById('servicio-precio').value); if(!n || isNaN(p) || p < 0) return; if(!config.servicios) config.servicios = []; config.servicios.push({ nombre: n, precio: p }); document.getElementById('servicio-nombre').value = ''; document.getElementById('servicio-precio').value = ''; renderAdminControls(); };
         window.quitarServicio = (i) => { config.servicios.splice(i, 1); renderAdminControls(); };
@@ -525,8 +558,10 @@
             const opts = horasBase.map(h => `<option value="${h}">${h}</option>`).join('');
             const sB = document.getElementById('admin-hora-bloqueo-esp');
             const sC = document.getElementById('cita-fija-hora');
+            const sS = document.getElementById('bloqueo-semanal-hora');
             if (sB) sB.innerHTML = opts;
             if (sC) sC.innerHTML = opts;
+            if (sS) sS.innerHTML = opts;
         }
         window.agregarBloqueoEspecial = () => {
             const f = document.getElementById('admin-fecha-bloqueo-esp').value;
@@ -729,7 +764,8 @@
             const ocupadas = snap.docs.map(d => d.data().hora); grid.innerHTML = "";
             const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === f).map(b => b.hora);
             const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, f)).map(c => c.hora);
-            horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h)) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
+            const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
+            horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h) && !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte))) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
             if(!grid.innerHTML) grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-10 uppercase italic'>Sin horarios disponibles</p>";
         }
 
