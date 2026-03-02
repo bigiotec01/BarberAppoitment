@@ -112,6 +112,10 @@
         <button onclick="toggleQR()" class="w-full bg-white text-black font-black py-4 rounded-2xl text-[10px] uppercase italic tracking-widest">Mi QR Barbero</button>
         <div class="bg-card p-6 rounded-[2rem] border border-zinc-800 space-y-6 text-center">
             <div>
+                <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Nombre de la Barbería</p>
+                <input type="text" id="admin-nombre-barberia" placeholder="Ej: Georgie Fale Salon" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none text-center">
+            </div>
+            <div class="border-t border-zinc-800 pt-4">
                 <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Días Abiertos</p>
                 <div class="grid grid-cols-7 gap-1" id="admin-dias"></div>
             </div>
@@ -316,6 +320,7 @@
             activarNotificaciones(auth.currentUser.uid);
             const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
             if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; }
+            document.getElementById('admin-nombre-barberia').value = config.nombreBarberia || '';
             const myLink = window.location.origin + window.location.pathname + "?b=" + currentBarber;
             document.getElementById("qrcode").innerHTML = "";
             new QRCode(document.getElementById("qrcode"), { text: myLink, width: 200, height: 200 });
@@ -464,7 +469,7 @@
                 if (proxima) proximaId = proxima.id;
             }
             lista.innerHTML = sorted.map(c => {
-                const msg = encodeURIComponent(`Hola ${c.nombre}, recordatorio de tu recorte con Bgio System hoy ${c.fecha} a las ${c.hora}.`);
+                const msg = encodeURIComponent(`Hola ${c.nombre}, recordatorio de tu recorte con ${config.nombreBarberia || 'la barbería'} hoy ${c.fecha} a las ${c.hora}.`);
                 let cardClass = 'bg-card border border-zinc-800';
                 let badge = '';
                 if (c.id === proximaId) {
@@ -506,7 +511,7 @@
             document.getElementById('stat-hora').textContent = horaPopular;
         }
 
-        window.guardarConfig = async () => { await db.collection("config").doc(`horarios_${currentBarber}`).set(config); alert("Ajustes Guardados ✅"); };
+        window.guardarConfig = async () => { config.nombreBarberia = document.getElementById('admin-nombre-barberia').value.trim(); await db.collection("config").doc(`horarios_${currentBarber}`).set(config); alert("Ajustes Guardados ✅"); };
         window.toggleDia = (i) => { if(config.diasActivos.includes(i)) config.diasActivos = config.diasActivos.filter(x => x !== i); else config.diasActivos.push(i); renderAdminControls(); };
         window.toggleHora = (h) => { if(!config.horasBloqueadas) config.horasBloqueadas = []; if(config.horasBloqueadas.includes(h)) config.horasBloqueadas = config.horasBloqueadas.filter(x => x !== h); else config.horasBloqueadas.push(h); renderAdminControls(); };
         window.agregarCierre = () => { const f = document.getElementById('admin-fecha-cierre').value; if(f && !config.cierresEspeciales.includes(f)) { config.cierresEspeciales.push(f); renderAdminControls(); } };
