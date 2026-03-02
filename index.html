@@ -159,6 +159,7 @@
                 <div id="citas-fijas-panel" class="hidden mt-3 space-y-2">
                     <p class="text-[9px] text-zinc-500 text-center">Ej: Juan, todos los sábados a las 8:00 AM</p>
                     <input type="text" id="cita-fija-nombre" placeholder="Nombre del cliente" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                    <input type="tel" id="cita-fija-tel" placeholder="Teléfono WhatsApp (ej: 5491112345678)" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
                     <div class="flex gap-2">
                         <select id="cita-fija-dia" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
                             <option value="0">Domingo</option>
@@ -432,7 +433,7 @@
                 fechas.forEach(fecha => {
                     (config.citasFijas || []).forEach((c, i) => {
                         if (citaFijaAplicaEnFecha(c, fecha)) {
-                            virtuales.push({ id: `fija-${fecha}-${i}`, fecha, hora: c.hora, nombre: c.nombre, esFija: true, frecuencia: c.frecuencia });
+                            virtuales.push({ id: `fija-${fecha}-${i}`, fecha, hora: c.hora, nombre: c.nombre, tel: c.tel || '', esFija: true, frecuencia: c.frecuencia });
                         }
                     });
                 });
@@ -477,9 +478,10 @@
                     cardClass = 'bg-card border border-zinc-800 opacity-40';
                 }
                 const servicioTag = c.servicio ? `<span class="text-[8px] bg-zinc-700 text-yellow-400 font-black px-2 py-0.5 rounded-full uppercase ml-1">✂️ ${c.servicio} · $${c.precio}</span>` : '';
+                const waBtn = `<a href="https://wa.me/${c.tel}?text=${msg}" target="_blank" class="bg-green-600 p-2 rounded-full"><svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.312.145.353.498 1.213.542 1.3.043.087.072.188.014.303-.058.116-.087.188-.173.289l-.26.303c-.087.101-.177.211-.077.383.1.173.444.733.953 1.185.656.584 1.21.765 1.383.852.173.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a>`;
                 const actions = c.esFija
-                    ? `<div class="text-[8px] text-zinc-600 italic font-black uppercase">recurrente</div>`
-                    : `<div class="flex items-center gap-4"><a href="https://wa.me/${c.tel}?text=${msg}" target="_blank" class="bg-green-600 p-2 rounded-full"><svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.312.145.353.498 1.213.542 1.3.043.087.072.188.014.303-.058.116-.087.188-.173.289l-.26.303c-.087.101-.177.211-.077.383.1.173.444.733.953 1.185.656.584 1.21.765 1.383.852.173.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a><button onclick="borrarCitaAdmin('${c.id}')" class="bg-red-900/40 w-11 h-11 flex items-center justify-center rounded-full text-red-500 font-black">X</button></div>`;
+                    ? `<div class="flex items-center gap-4">${c.tel ? waBtn : '<span class="text-[8px] text-zinc-600 italic font-black uppercase">recurrente</span>'}</div>`
+                    : `<div class="flex items-center gap-4">${waBtn}<button onclick="borrarCitaAdmin('${c.id}')" class="bg-red-900/40 w-11 h-11 flex items-center justify-center rounded-full text-red-500 font-black">X</button></div>`;
                 return `<div class="${cardClass} p-5 rounded-3xl flex justify-between items-center"><div><p class="font-black text-sm uppercase text-white flex items-center gap-2">${c.nombre}${badge}</p><p class="text-yellow-500 font-bold text-[10px] italic">${formatFecha(c.fecha)} · ${c.hora}</p>${servicioTag}</div>${actions}</div>`;
             }).join('');
         };
@@ -539,12 +541,14 @@
         };
         window.agregarCitaFija = () => {
             const nombre = document.getElementById('cita-fija-nombre').value.trim();
+            const tel = document.getElementById('cita-fija-tel').value.trim();
             const dia = parseInt(document.getElementById('cita-fija-dia').value);
             const hora = document.getElementById('cita-fija-hora').value;
             const frecuencia = document.getElementById('cita-fija-frecuencia').value;
             if (!nombre) return alert("Ingresa el nombre del cliente");
             if (!config.citasFijas) config.citasFijas = [];
             const entrada = { diaSemana: dia, hora, nombre, frecuencia };
+            if (tel) entrada.tel = tel;
             if (frecuencia === 'bisemanal') {
                 const fechaInicio = document.getElementById('cita-fija-fecha-inicio').value;
                 if (!fechaInicio) return alert("Elige la fecha del primer turno para cita bisemanal");
@@ -552,6 +556,7 @@
             }
             config.citasFijas.push(entrada);
             document.getElementById('cita-fija-nombre').value = '';
+            document.getElementById('cita-fija-tel').value = '';
             renderAdminControls();
         };
         window.quitarCitaFija = (i) => { config.citasFijas.splice(i, 1); renderAdminControls(); };
