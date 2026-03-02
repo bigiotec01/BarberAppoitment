@@ -525,8 +525,20 @@
             domingo.setDate(lunes.getDate() + 6);
             const lunesStr = lunes.toISOString().split('T')[0];
             const domingoStr = domingo.toISOString().split('T')[0];
-            const hoyCount = todasLasCitas.filter(c => c.fecha === hoy).length;
-            const semanaCount = todasLasCitas.filter(c => c.fecha >= lunesStr && c.fecha <= domingoStr).length;
+            // Generar citas fijas virtuales para la semana y hoy
+            const citasFijasStats = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(lunes); d.setDate(lunes.getDate() + i);
+                const fecha = d.toISOString().split('T')[0];
+                (config.citasFijas || []).forEach((c, idx) => {
+                    if (citaFijaAplicaEnFecha(c, fecha)) citasFijasStats.push({ fecha, hora: c.hora });
+                });
+            }
+            const clavesReales = new Set(todasLasCitas.map(c => `${c.fecha}-${c.hora}`));
+            const fijasSinDuplicar = citasFijasStats.filter(v => !clavesReales.has(`${v.fecha}-${v.hora}`));
+            const todasConFijas = [...todasLasCitas, ...fijasSinDuplicar];
+            const hoyCount = todasConFijas.filter(c => c.fecha === hoy).length;
+            const semanaCount = todasConFijas.filter(c => c.fecha >= lunesStr && c.fecha <= domingoStr).length;
             const horaCount = {};
             todasLasCitas.forEach(c => { horaCount[c.hora] = (horaCount[c.hora] || 0) + 1; });
             const horaPopular = Object.entries(horaCount).sort((a,b) => b[1]-a[1])[0]?.[0] || '-';
