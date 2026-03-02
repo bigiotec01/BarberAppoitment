@@ -42,8 +42,38 @@
             <input type="tel" id="reg-tel" placeholder="WhatsApp (Ej: 17871234567)" autocomplete="off" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
             <input type="email" id="reg-email" placeholder="Email" autocomplete="off" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
             <input type="password" id="reg-pass" placeholder="Contraseña" autocomplete="new-password" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
+            <div class="flex items-start gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-3">
+                <input type="checkbox" id="reg-terminos" class="mt-0.5 w-4 h-4 accent-yellow-500 flex-shrink-0">
+                <p class="text-[10px] text-zinc-400 leading-relaxed">Acepto los <button onclick="document.getElementById('modal-terminos').classList.remove('hidden')" class="text-yellow-500 font-black underline">Términos y Condiciones</button> de uso de la aplicación.</p>
+            </div>
             <button onclick="registrar()" class="w-full bg-white text-black font-black py-4 rounded-2xl uppercase">Crear Cuenta</button>
             <button onclick="toggleAuth('login')" class="w-full text-center text-xs text-zinc-500 underline mt-2">Ya tengo cuenta</button>
+        </div>
+
+        <!-- Modal Términos y Condiciones -->
+        <div id="modal-terminos" class="hidden fixed inset-0 bg-black/90 z-50 flex items-end justify-center p-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col">
+                <div class="flex items-center justify-between p-5 border-b border-zinc-800">
+                    <p class="text-[11px] font-black uppercase text-yellow-500 tracking-widest">📄 Términos y Condiciones</p>
+                    <button onclick="document.getElementById('modal-terminos').classList.add('hidden')" class="text-zinc-500 font-black text-lg">✕</button>
+                </div>
+                <div class="overflow-y-auto p-5 space-y-4 text-[10px] text-zinc-400 leading-relaxed">
+                    <p class="text-zinc-500 italic">Última actualización: Marzo 2026</p>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">1. Aceptación de los términos</p><p>Al acceder y utilizar esta aplicación, el usuario acepta cumplir con los presentes Términos y Condiciones. Si no está de acuerdo, debe abstenerse de utilizar la aplicación.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">2. Descripción del servicio</p><p>La aplicación facilita la programación de citas entre clientes y la barbería. Funciona únicamente como herramienta de agendamiento. La barbería se reserva el derecho de modificar horarios, disponibilidad y servicios en cualquier momento.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">3. Información del usuario</p><p>El usuario se compromete a proporcionar información real, completa y actualizada. El uso de información falsa podrá resultar en la cancelación de la cita o restricción de uso.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">4. Política de Cancelación y No Asistencia</p><p>Las citas deberán cancelarse con anticipación. Si el cliente no se presenta ("No-Show"), la barbería se reserva el derecho de aplicar una penalidad del 50% del servicio, requerir pago previo para futuras citas, o restringir el uso de la aplicación. Al reservar una cita, el usuario acepta esta política.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">5. Pagos</p><p>La aplicación no procesa pagos directamente. Cualquier pago se realiza en el establecimiento.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">6. Limitación de responsabilidad</p><p>La barbería no será responsable por cancelaciones por causas externas, interrupciones técnicas temporales, ni pérdidas derivadas de errores involuntarios del sistema.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">7. Conducta del usuario</p><p>El usuario se compromete a utilizar la aplicación de manera responsable y respetuosa. Cualquier uso indebido podrá resultar en la suspensión del acceso.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">8. Protección de datos</p><p>El manejo de la información personal se rige por nuestra Política de Privacidad disponible dentro de la aplicación.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">9. Modificaciones</p><p>Nos reservamos el derecho de modificar estos Términos en cualquier momento. Los cambios entrarán en vigor inmediatamente después de su publicación.</p></div>
+                    <div><p class="text-white font-black uppercase text-[9px] mb-1">10. Legislación aplicable</p><p>Estos Términos se rigen por las leyes del Estado Libre Asociado de Puerto Rico.</p></div>
+                </div>
+                <div class="p-4 border-t border-zinc-800">
+                    <button onclick="document.getElementById('reg-terminos').checked=true; document.getElementById('modal-terminos').classList.add('hidden')" class="w-full bg-yellow-500 text-black font-black py-3 rounded-2xl text-[10px] uppercase">Acepto los Términos</button>
+                </div>
+            </div>
         </div>
         <p class="text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v3.5</p>
     </div>
@@ -848,6 +878,7 @@
             const email = document.getElementById('reg-email').value.trim();
             const pass = document.getElementById('reg-pass').value;
             if (!nom || !tel || !email || !pass) return alert("Completa todos los campos");
+            if (!document.getElementById('reg-terminos').checked) return alert("Debes aceptar los Términos y Condiciones para continuar");
             try {
                 _registrando = true;
                 const r = await auth.createUserWithEmailAndPassword(email, pass);
