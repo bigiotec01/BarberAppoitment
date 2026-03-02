@@ -321,7 +321,7 @@
             const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
             if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; }
             document.getElementById('admin-nombre-barberia').value = config.nombreBarberia || '';
-            const myLink = window.location.origin + window.location.pathname + "?b=" + currentBarber;
+            const myLink = `https://georgiefalesalon.com/?b=${currentBarber}`;
             document.getElementById("qrcode").innerHTML = "";
             new QRCode(document.getElementById("qrcode"), { text: myLink, width: 200, height: 200 });
             // Fecha por defecto para disponibilidad WhatsApp
@@ -359,7 +359,7 @@
         if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
 
         // 3. Crear mensaje
-        const link = window.location.origin + window.location.pathname + "?b=" + currentBarber;
+        const link = `https://georgiefalesalon.com/?b=${currentBarber}`;
         const fechaTexto = formatFecha(fechaInput);
         const horasTexto = disponibles.map(h => `🕐 ${h}`).join('\n');
         const msg = `*ESPACIOS DISPONIBLES*\n📅 *${fechaTexto}*\n\n${horasTexto}\n\n🔗 Reserva: ${link}`;
