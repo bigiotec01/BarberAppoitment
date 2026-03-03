@@ -3,12 +3,12 @@
   "name": "Barber Shop Citas",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/100/100319.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/100/100319.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
