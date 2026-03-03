@@ -169,6 +169,7 @@
             <button onclick="logout()" class="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl text-[10px] font-black">SALIR</button>
         </header>
         <button onclick="toggleQR()" class="w-full bg-white text-black font-black py-4 rounded-2xl text-[10px] uppercase italic tracking-widest">Mi QR Barbero</button>
+        <button onclick="abrirModalManual()" class="w-full bg-zinc-900 border border-yellow-500/50 text-yellow-400 font-black py-3 rounded-2xl text-[10px] uppercase italic tracking-widest">+ Cita Manual</button>
         <div class="bg-card p-6 rounded-[2rem] border border-zinc-800 space-y-6 text-center">
             <div>
                 <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Nombre de la Barbería</p>
@@ -562,11 +563,13 @@
                     cardClass = 'bg-zinc-900 border border-yellow-500/30';
                     const freqLabel = c.frecuencia === 'bisemanal' ? 'c/2 sem' : 'semanal';
                     badge = `<span class="text-[8px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 font-black px-2 py-0.5 rounded-full uppercase ml-2">📌 FIJA · ${freqLabel}</span>`;
+                } else if (c.uid === 'manual') {
+                    badge = `<span class="text-[8px] bg-zinc-700 text-zinc-300 border border-zinc-600 font-black px-2 py-0.5 rounded-full uppercase ml-2">MANUAL</span>`;
                 } else if (tipo === 'hoy' && parseHora(c.hora) < nowMins) {
                     cardClass = 'bg-card border border-zinc-800 opacity-40';
                 }
                 const servicioTag = c.servicio ? `<span class="text-[8px] bg-zinc-700 text-yellow-400 font-black px-2 py-0.5 rounded-full uppercase ml-1">✂️ ${c.servicio} · $${c.precio}</span>` : '';
-                const waBtn = `<a href="https://wa.me/${c.tel}?text=${msg}" target="_blank" class="bg-green-600 p-2 rounded-full"><svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.312.145.353.498 1.213.542 1.3.043.087.072.188.014.303-.058.116-.087.188-.173.289l-.26.303c-.087.101-.177.211-.077.383.1.173.444.733.953 1.185.656.584 1.21.765 1.383.852.173.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a>`;
+                const waBtn = c.tel ? `<a href="https://wa.me/${c.tel}?text=${msg}" target="_blank" class="bg-green-600 p-2 rounded-full"><svg class="w-6 h-6 fill-white" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.001.332.005c.109.004.258-.041.404.312.145.353.498 1.213.542 1.3.043.087.072.188.014.303-.058.116-.087.188-.173.289l-.26.303c-.087.101-.177.211-.077.383.1.173.444.733.953 1.185.656.584 1.21.765 1.383.852.173.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a>` : '';
                 const actions = c.esFija
                     ? `<div class="flex items-center gap-4">${c.tel ? waBtn : '<span class="text-[8px] text-zinc-600 italic font-black uppercase">recurrente</span>'}</div>`
                     : `<div class="flex items-center gap-4">${waBtn}<button onclick="borrarCitaAdmin('${c.id}')" class="bg-red-900/40 w-11 h-11 flex items-center justify-center rounded-full text-red-500 font-black">X</button></div>`;
@@ -920,6 +923,108 @@
                 alert(e.code === 'auth/email-already-in-use' ? 'Este email ya está registrado' : 'Error al crear cuenta');
             }
         };
+        // ── CITA MANUAL ────────────────────────────────────────────────
+        window.abrirModalManual = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('manual-nombre').value = '';
+            document.getElementById('manual-tel').value = '';
+            document.getElementById('manual-fecha').value = '';
+            document.getElementById('manual-fecha').min = today;
+            document.getElementById('manual-hora').innerHTML = '<option value="">— Elige una fecha primero —</option>';
+            document.getElementById('manual-servicio').innerHTML = '<option value="">Sin servicio</option>';
+            (config.servicios || []).forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.nombre + '|' + s.precio;
+                opt.textContent = `✂️ ${s.nombre} · $${s.precio}`;
+                document.getElementById('manual-servicio').appendChild(opt);
+            });
+            document.getElementById('modal-manual').classList.remove('hidden');
+        };
+
+        window.cerrarModalManual = function() {
+            document.getElementById('modal-manual').classList.add('hidden');
+        };
+
+        window.cargarHorasManual = async function() {
+            const f = document.getElementById('manual-fecha').value;
+            const sel = document.getElementById('manual-hora');
+            if (!f) return;
+            sel.innerHTML = '<option value="">Cargando...</option>';
+            const diaNum = new Date(f).getUTCDay();
+            if ((config.cierresEspeciales || []).includes(f)) {
+                sel.innerHTML = '<option value="">Día cerrado</option>'; return;
+            }
+            if (!config.diasActivos.includes(diaNum)) {
+                sel.innerHTML = '<option value="">Cerrado este día</option>'; return;
+            }
+            const snap = await db.collection("citas").where("fecha", "==", f).where("barbero", "==", currentBarber).get();
+            const ocupadas = snap.docs.map(d => d.data().hora);
+            const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === f).map(b => b.hora);
+            const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, f)).map(c => c.hora);
+            const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
+            const libres = horasBase.filter(h =>
+                !ocupadas.includes(h) &&
+                !(config.horasBloqueadas || []).includes(h) &&
+                !bloqueosEsp.includes(h) &&
+                !citasFijasHoy.includes(h) &&
+                !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte))
+            );
+            if (!libres.length) {
+                sel.innerHTML = '<option value="">Sin horarios disponibles</option>'; return;
+            }
+            sel.innerHTML = '<option value="">— Seleccionar hora —</option>' +
+                libres.map(h => `<option value="${h}">${h}</option>`).join('');
+        };
+
+        window.guardarCitaManual = async function() {
+            const nombre = document.getElementById('manual-nombre').value.trim();
+            const tel = document.getElementById('manual-tel').value.trim();
+            const fecha = document.getElementById('manual-fecha').value;
+            const hora = document.getElementById('manual-hora').value;
+            const servicioVal = document.getElementById('manual-servicio').value;
+            if (!nombre) { alert('El nombre del cliente es obligatorio'); return; }
+            if (!fecha || !hora) { alert('Elige fecha y hora'); return; }
+            const datos = {
+                fecha, hora,
+                barbero: currentBarber,
+                nombre, tel,
+                uid: 'manual',
+                creado: firebase.firestore.Timestamp.now()
+            };
+            if (servicioVal) {
+                const [sNombre, sPrecio] = servicioVal.split('|');
+                datos.servicio = sNombre;
+                datos.precio = parseFloat(sPrecio);
+            }
+            try {
+                await db.collection("citas").add(datos);
+                cerrarModalManual();
+                alert(`Cita de ${nombre} guardada para el ${formatFecha(fecha)} a las ${hora}`);
+            } catch(e) {
+                alert('Error al guardar la cita');
+            }
+        };
+        // ───────────────────────────────────────────────────────────────
     </script>
+
+    <!-- Modal Cita Manual -->
+    <div id="modal-manual" class="hidden fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 w-full max-w-sm space-y-4">
+            <h2 class="text-yellow-500 font-black uppercase text-center tracking-widest text-sm italic">✂️ Nueva Cita Manual</h2>
+            <input id="manual-nombre" type="text" placeholder="Nombre del cliente *" class="w-full bg-black border border-zinc-700 p-3 rounded-xl text-sm text-white outline-none">
+            <input id="manual-tel" type="tel" placeholder="Teléfono (opcional)" class="w-full bg-black border border-zinc-700 p-3 rounded-xl text-sm text-white outline-none">
+            <input id="manual-fecha" type="date" onchange="cargarHorasManual()" class="w-full bg-black border border-zinc-700 p-3 rounded-xl text-sm text-white outline-none">
+            <select id="manual-hora" class="w-full bg-black border border-zinc-700 p-3 rounded-xl text-sm text-white outline-none">
+                <option value="">— Elige una fecha primero —</option>
+            </select>
+            <select id="manual-servicio" class="w-full bg-black border border-zinc-700 p-3 rounded-xl text-sm text-white outline-none">
+                <option value="">Sin servicio</option>
+            </select>
+            <div class="flex gap-3 pt-2">
+                <button onclick="cerrarModalManual()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
+                <button onclick="guardarCitaManual()" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Guardar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
