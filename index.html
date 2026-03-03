@@ -290,8 +290,12 @@
             <p class="text-[10px] font-black uppercase text-yellow-500 tracking-widest italic text-center">📲 Disponibilidad WhatsApp</p>
             <p class="text-[9px] text-zinc-500 text-center">Envía los espacios libres a tu grupo de WhatsApp</p>
             <div class="flex gap-2">
-                <input type="date" id="admin-fecha-disponibilidad" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
+                <input type="date" id="admin-fecha-disponibilidad" onchange="verDisponibilidadAdmin()" class="flex-1 bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none">
                 <button onclick="enviarDisponibilidadWhatsApp()" class="bg-green-600 px-5 rounded-xl text-[10px] font-black text-white uppercase whitespace-nowrap active:scale-95 transition-transform">Enviar</button>
+            </div>
+            <div id="admin-disponibilidad-preview" class="hidden">
+                <p class="text-[9px] font-black uppercase text-zinc-500 tracking-widest mb-2 text-center">Horas disponibles</p>
+                <div id="admin-disponibilidad-grid" class="grid grid-cols-3 gap-2"></div>
             </div>
         </div>
 
@@ -453,6 +457,35 @@
         alert("Error al conectar con la base de datos. Revisa la consola (F12) para crear el índice de Firestore.");
     }
 };
+
+        window.verDisponibilidadAdmin = async () => {
+            const fechaInput = document.getElementById('admin-fecha-disponibilidad').value;
+            const preview = document.getElementById('admin-disponibilidad-preview');
+            const grid = document.getElementById('admin-disponibilidad-grid');
+            if (!fechaInput) { preview.classList.add('hidden'); return; }
+            grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 text-[9px] animate-pulse py-2'>Verificando...</p>";
+            preview.classList.remove('hidden');
+            const diaNum = new Date(fechaInput).getUTCDay();
+            if ((config.cierresEspeciales || []).includes(fechaInput) || !config.diasActivos.includes(diaNum)) {
+                grid.innerHTML = "<p class='col-span-3 text-center text-red-500 font-black text-[10px] py-2 uppercase italic'>Día cerrado</p>"; return;
+            }
+            const snap = await db.collection("citas").where("fecha","==",fechaInput).where("barbero","==",currentBarber).get();
+            const ocupadas = snap.docs.map(d => d.data().hora);
+            const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
+            const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
+            const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
+            const disponibles = horasBase.filter(h =>
+                !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) &&
+                !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h) &&
+                !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte))
+            );
+            if (!disponibles.length) {
+                grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-2 uppercase italic'>Sin espacios disponibles</p>"; return;
+            }
+            grid.innerHTML = disponibles.map(h =>
+                `<span class="bg-zinc-800 border border-zinc-700 text-white text-[10px] font-bold text-center py-2 rounded-xl">${h}</span>`
+            ).join('');
+        };
 
         let _citasListener = null;
         function descargarCitasAdmin() {
