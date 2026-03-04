@@ -1037,6 +1037,52 @@
             }
         };
         // ───────────────────────────────────────────────────────────────
+        window.abrirReporteMes = () => {
+            const mes = new Date().toISOString().slice(0,7);
+            document.getElementById('input-mes-reporte').value = mes;
+            document.getElementById('modal-reporte').classList.remove('hidden');
+        };
+        window.cerrarReporteMes = () => {
+            document.getElementById('modal-reporte').classList.add('hidden');
+        };
+        window.descargarReporteCSV = async () => {
+            const mesStr = document.getElementById('input-mes-reporte').value;
+            if (!mesStr) return;
+            const [anio, mes] = mesStr.split('-').map(Number);
+            const fechaInicio = mesStr + '-01';
+            const lastDay = new Date(anio, mes, 0).getDate();
+            const fechaFin = `${mesStr}-${String(lastDay).padStart(2,'0')}`;
+            const btn = document.querySelector('#modal-reporte button:last-child');
+            btn.textContent = 'Cargando...';
+            btn.disabled = true;
+            try {
+                const snap = await db.collection("citas")
+                    .where("barbero", "==", currentBarber)
+                    .where("fecha", ">=", fechaInicio)
+                    .where("fecha", "<=", fechaFin)
+                    .get();
+                const citas = snap.docs.map(d => d.data());
+                citas.sort((a,b) => a.fecha.localeCompare(b.fecha) || parseHora(a.hora) - parseHora(b.hora));
+                let total = 0;
+                const filas = citas.map(c => {
+                    const precio = parseFloat(c.precio) || 0;
+                    total += precio;
+                    return `"${c.nombre}","${c.fecha}","${c.hora}","${c.servicio || ''}",${precio || ''}`;
+                });
+                const csv = ['Nombre,Fecha,Hora,Servicio,Precio', ...filas, `"TOTAL",,,,${total}`].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `reporte-${mesStr}.csv`; a.click();
+                URL.revokeObjectURL(url);
+                cerrarReporteMes();
+            } catch(e) {
+                alert('Error al generar el reporte: ' + e.message);
+            } finally {
+                btn.textContent = 'Descargar CSV';
+                btn.disabled = false;
+            }
+        };
     </script>
 
     <!-- Modal Cita Manual -->
@@ -1074,59 +1120,5 @@
         </div>
     </div>
 
-    <script>
-        window.abrirReporteMes = () => {
-            const hoy = new Date();
-            const mes = hoy.toISOString().slice(0,7);
-            document.getElementById('input-mes-reporte').value = mes;
-            document.getElementById('modal-reporte').classList.remove('hidden');
-        };
-        window.cerrarReporteMes = () => {
-            document.getElementById('modal-reporte').classList.add('hidden');
-        };
-        window.descargarReporteCSV = async () => {
-            const mesStr = document.getElementById('input-mes-reporte').value;
-            if (!mesStr) return;
-            const [anio, mes] = mesStr.split('-').map(Number);
-            const fechaInicio = mesStr + '-01';
-            const lastDay = new Date(anio, mes, 0).getDate();
-            const fechaFin = `${mesStr}-${String(lastDay).padStart(2,'0')}`;
-            const btn = document.querySelector('#modal-reporte button:last-child');
-            btn.textContent = 'Cargando...';
-            btn.disabled = true;
-            try {
-                const snap = await db.collection("citas")
-                    .where("barbero", "==", currentBarber)
-                    .where("fecha", ">=", fechaInicio)
-                    .where("fecha", "<=", fechaFin)
-                    .get();
-                const citas = snap.docs.map(d => d.data());
-                citas.sort((a,b) => a.fecha.localeCompare(b.fecha) || parseHora(a.hora) - parseHora(b.hora));
-                let total = 0;
-                const filas = citas.map(c => {
-                    const precio = parseFloat(c.precio) || 0;
-                    total += precio;
-                    const servicio = c.servicio || '';
-                    return `"${c.nombre}","${c.fecha}","${c.hora}","${servicio}",${precio || ''}`;
-                });
-                const encabezado = 'Nombre,Fecha,Hora,Servicio,Precio';
-                const totalFila = `"TOTAL",,,,${total}`;
-                const csv = [encabezado, ...filas, totalFila].join('\n');
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `reporte-${mesStr}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-                cerrarReporteMes();
-            } catch(e) {
-                alert('Error al generar el reporte: ' + e.message);
-            } finally {
-                btn.textContent = 'Descargar CSV';
-                btn.disabled = false;
-            }
-        };
-    </script>
 </body>
 </html>
