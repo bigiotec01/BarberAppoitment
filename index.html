@@ -1058,10 +1058,8 @@
             try {
                 const snap = await db.collection("citas")
                     .where("barbero", "==", currentBarber)
-                    .where("fecha", ">=", fechaInicio)
-                    .where("fecha", "<=", fechaFin)
                     .get();
-                const citas = snap.docs.map(d => d.data());
+                const citas = snap.docs.map(d => d.data()).filter(c => c.fecha >= fechaInicio && c.fecha <= fechaFin);
                 citas.sort((a,b) => a.fecha.localeCompare(b.fecha) || parseHora(a.hora) - parseHora(b.hora));
                 let total = 0;
                 const filas = citas.map(c => {
