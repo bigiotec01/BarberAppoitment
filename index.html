@@ -578,7 +578,7 @@
             const todas = [...reales, ...virtualesSinDuplicar];
 
             if (!todas.length) { lista.innerHTML = "<p class='text-center py-10 opacity-20 text-[10px] font-black italic uppercase'>Sin Citas</p>"; return; }
-            const sorted = [...todas].sort((a,b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora));
+            const sorted = [...todas].sort((a,b) => a.fecha.localeCompare(b.fecha) || parseHora(a.hora) - parseHora(b.hora));
             const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
             let proximaId = null;
             if (tipo === 'hoy') {
