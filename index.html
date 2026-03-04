@@ -284,6 +284,9 @@
                     <p class="text-[9px] text-zinc-500 uppercase font-black mt-1">Hora popular</p>
                 </div>
             </div>
+            <div class="mt-4 text-center">
+                <button onclick="abrirReporteMes()" class="text-[10px] font-black uppercase bg-zinc-800 border border-zinc-700 text-yellow-400 px-4 py-2 rounded-full tracking-widest">📊 Reporte del Mes</button>
+            </div>
         </div>
         <!-- WhatsApp Disponibilidad -->
         <div class="bg-card border border-zinc-800 rounded-[2rem] p-6 space-y-4">
@@ -494,10 +497,6 @@
             const hoy = new Date().toISOString().split('T')[0];
             if (_citasListener) _citasListener();
             _citasListener = db.collection("citas").where("barbero", "==", currentBarber).onSnapshot(snap => {
-                const batch = db.batch();
-                let hayViejas = false;
-                snap.docs.forEach(doc => { if (doc.data().fecha < hoy) { batch.delete(doc.ref); hayViejas = true; } });
-                if (hayViejas) batch.commit();
                 todasLasCitas = snap.docs.filter(d => d.data().fecha >= hoy).map(doc => ({ id: doc.id, ...doc.data() }));
                 filtrarCitasAdmin('hoy');
                 renderAdminControls();
@@ -1059,5 +1058,75 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Reporte del Mes -->
+    <div id="modal-reporte" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 w-full max-w-sm space-y-5">
+            <p class="text-[11px] font-black uppercase text-yellow-500 tracking-widest text-center">📊 Reporte del Mes</p>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Seleccionar mes</label>
+                <input type="month" id="input-mes-reporte" class="w-full bg-zinc-800 border border-zinc-700 text-white font-bold text-sm rounded-2xl px-4 py-3 focus:outline-none focus:border-yellow-500" />
+            </div>
+            <div class="flex gap-3">
+                <button onclick="cerrarReporteMes()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
+                <button onclick="descargarReporteCSV()" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Descargar CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.abrirReporteMes = () => {
+            const hoy = new Date();
+            const mes = hoy.toISOString().slice(0,7);
+            document.getElementById('input-mes-reporte').value = mes;
+            document.getElementById('modal-reporte').classList.remove('hidden');
+        };
+        window.cerrarReporteMes = () => {
+            document.getElementById('modal-reporte').classList.add('hidden');
+        };
+        window.descargarReporteCSV = async () => {
+            const mesStr = document.getElementById('input-mes-reporte').value;
+            if (!mesStr) return;
+            const [anio, mes] = mesStr.split('-').map(Number);
+            const fechaInicio = mesStr + '-01';
+            const lastDay = new Date(anio, mes, 0).getDate();
+            const fechaFin = `${mesStr}-${String(lastDay).padStart(2,'0')}`;
+            const btn = document.querySelector('#modal-reporte button:last-child');
+            btn.textContent = 'Cargando...';
+            btn.disabled = true;
+            try {
+                const snap = await db.collection("citas")
+                    .where("barbero", "==", currentBarber)
+                    .where("fecha", ">=", fechaInicio)
+                    .where("fecha", "<=", fechaFin)
+                    .get();
+                const citas = snap.docs.map(d => d.data());
+                citas.sort((a,b) => a.fecha.localeCompare(b.fecha) || parseHora(a.hora) - parseHora(b.hora));
+                let total = 0;
+                const filas = citas.map(c => {
+                    const precio = parseFloat(c.precio) || 0;
+                    total += precio;
+                    const servicio = c.servicio || '';
+                    return `"${c.nombre}","${c.fecha}","${c.hora}","${servicio}",${precio || ''}`;
+                });
+                const encabezado = 'Nombre,Fecha,Hora,Servicio,Precio';
+                const totalFila = `"TOTAL",,,,${total}`;
+                const csv = [encabezado, ...filas, totalFila].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `reporte-${mesStr}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                cerrarReporteMes();
+            } catch(e) {
+                alert('Error al generar el reporte: ' + e.message);
+            } finally {
+                btn.textContent = 'Descargar CSV';
+                btn.disabled = false;
+            }
+        };
+    </script>
 </body>
 </html>
