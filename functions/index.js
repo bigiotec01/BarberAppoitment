@@ -13,8 +13,8 @@ exports.notificarNuevaCita = functions.firestore
 
         await admin.messaging().send({
             notification: {
-                title: "✂️ Nueva Cita",
-                body: `${cita.nombre} · ${cita.fecha} a las ${cita.hora}`,
+                title: `✂️ Nueva Cita - ${cita.nombre}`,
+                body: `${cita.fecha} a las ${cita.hora}`,
             },
             token,
         });
