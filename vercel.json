@@ -2,6 +2,12 @@
   "version": 2,
   "public": true,
   "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://babershop-fa82a.firebaseapp.com/__/auth/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",
