@@ -118,6 +118,7 @@
                 <h4 id="cita-activa-fecha" class="text-2xl font-black italic uppercase">...</h4>
                 <p id="cita-activa-hora" class="text-xl font-black bg-black/10 inline-block px-5 py-1 rounded-full mt-2">...</p>
                 <button id="btn-cancelar-propia" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
+                <button id="btn-otra-persona" class="hidden mt-3 w-full text-[10px] font-black uppercase bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 py-3 rounded-2xl active:scale-95 transition-transform">+ Agregar cita para otra persona</button>
             </div>
             <div class="mt-4 bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-left">
                 <p class="text-[10px] text-zinc-400 leading-relaxed">⚠️ Al no asistir a tu cita ni cancelarla con anticipación, se aplica una <span class="text-yellow-400 font-black">penalidad del 50%</span> del servicio. Este pago es requerido para agendar una nueva cita. Gracias.</p>
@@ -876,6 +877,7 @@
         }
 
         let _citaPendienteHora = null, _citaPendienteFecha = null;
+        let _otraPersonaHora = null, _otraPersonaFecha = null;
 
         function confirmarCita(h, f) {
             const servicios = config.servicios || [];
@@ -903,6 +905,50 @@
 
         window.cerrarServicioModal = () => { document.getElementById('servicioModal').classList.add('hidden'); };
 
+        window.abrirOtraPersona = async (fecha, horaUsada) => {
+            const snap = await db.collection("citas").where("fecha","==",fecha).where("barbero","==",currentBarber).get();
+            const ocupadas = snap.docs.map(d => d.data().hora);
+            const diaNum = new Date(fecha).getUTCDay();
+            const bloqueosEsp = (config.bloqueosEspeciales||[]).filter(b=>b.fecha===fecha).map(b=>b.hora);
+            const citasFijas = (config.citasFijas||[]).filter(c=>citaFijaAplicaEnFecha(c,fecha)).map(c=>c.hora);
+            const bloqueoSemanal = (config.bloqueosSemanales||[]).find(b=>b.diaSemana===diaNum);
+            const disponibles = horasBase.filter(h =>
+                !ocupadas.includes(h) && !(config.horasBloqueadas||[]).includes(h) &&
+                !bloqueosEsp.includes(h) && !citasFijas.includes(h) &&
+                !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte)) &&
+                parseHora(h) > parseHora(horaUsada)
+            );
+            if (!disponibles.length) { alert('No hay más horarios disponibles ese día.'); return; }
+            _otraPersonaHora = disponibles[0];
+            document.getElementById('otra-persona-hora-label').textContent = _otraPersonaHora;
+            document.getElementById('otra-persona-nombre').value = userData.nombre;
+            document.getElementById('modal-otra-persona').classList.remove('hidden');
+        };
+
+        window.cerrarOtraPersona = () => document.getElementById('modal-otra-persona').classList.add('hidden');
+
+        window.confirmarOtraPersona = async () => {
+            const nombre = document.getElementById('otra-persona-nombre').value.trim();
+            if (!nombre) { alert('Ingresa un nombre'); return; }
+            const btn = document.getElementById('btn-confirmar-otra');
+            btn.textContent = 'Guardando...'; btn.disabled = true;
+            try {
+                let adminToken = null;
+                try {
+                    const adminSnap = await db.collection("usuarios").where("rol","==","admin").where("barberId","==",currentBarber).get();
+                    adminToken = adminSnap.docs[0]?.data()?.fcmToken || null;
+                } catch(e) {}
+                await db.collection("citas").add({ fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
+                document.getElementById('modal-otra-persona').classList.add('hidden');
+                document.getElementById('btn-otra-persona').classList.add('hidden');
+                alert(`✅ Cita de ${nombre} confirmada a las ${_otraPersonaHora}`);
+            } catch(e) {
+                alert('Error al guardar: ' + e.message);
+            } finally {
+                btn.textContent = 'Confirmar'; btn.disabled = false;
+            }
+        };
+
         async function abrirConfirmacionCita(h, f, servicio, precio) {
             const resumen = servicio ? `${servicio} ($${precio})` : 'Sin servicio especificado';
             if(confirm(`¿Confirmar cita el ${formatFecha(f)} a las ${h}?\nServicio: ${resumen}`)) {
@@ -919,7 +965,11 @@
                 document.getElementById('cita-info-container').classList.remove('hidden');
                 document.getElementById('step-1').classList.add('hidden');
                 document.getElementById('step-2').classList.add('hidden');
-                document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) docRef.delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
+                document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) docRef.delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
+                _otraPersonaFecha = f;
+                const btnOtra = document.getElementById('btn-otra-persona');
+                btnOtra.classList.remove('hidden');
+                btnOtra.onclick = () => abrirOtraPersona(f, h);
             }
         }
 
@@ -1099,6 +1149,25 @@
             <div class="flex gap-3 pt-2">
                 <button onclick="cerrarModalManual()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
                 <button onclick="guardarCitaManual()" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Otra Persona -->
+    <div id="modal-otra-persona" class="hidden fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 w-full max-w-sm space-y-4">
+            <p class="text-yellow-500 font-black uppercase text-center tracking-widest text-sm italic">👤 Otra persona</p>
+            <div class="text-center">
+                <p id="otra-persona-hora-label" class="text-white font-black text-2xl"></p>
+                <p class="text-zinc-500 text-[10px] uppercase font-black mt-1">Siguiente hora disponible</p>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Nombre</label>
+                <input id="otra-persona-nombre" type="text" class="w-full bg-zinc-800 border border-zinc-700 text-white font-bold text-sm rounded-2xl px-4 py-3 focus:outline-none focus:border-yellow-500" />
+            </div>
+            <div class="flex gap-3">
+                <button onclick="cerrarOtraPersona()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
+                <button onclick="confirmarOtraPersona()" id="btn-confirmar-otra" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Confirmar</button>
             </div>
         </div>
     </div>
