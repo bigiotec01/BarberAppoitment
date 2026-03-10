@@ -546,7 +546,9 @@ try {
     const citasFijasWA = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
     const diaNumWA = new Date(fechaInput).getUTCDay();
     const bloqueoSemanalWA = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNumWA);
-    const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h) && !(bloqueoSemanalWA && parseHora(h) >= parseHora(bloqueoSemanalWA.horaCorte)));
+    const hoyWA = new Date().toISOString().split('T')[0];
+    const ahoraWA = new Date(); const minutosAhoraWA = ahoraWA.getHours() * 60 + ahoraWA.getMinutes();
+    const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h) && !(bloqueoSemanalWA && parseHora(h) >= parseHora(bloqueoSemanalWA.horaCorte)) && !(fechaInput === hoyWA && parseHora(h) <= minutosAhoraWA));
     
     if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
 
@@ -584,10 +586,13 @@ try {
         const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
         const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
         const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
+        const hoyAdm = new Date().toISOString().split('T')[0];
+        const ahoraAdm = new Date(); const minutosAhoraAdm = ahoraAdm.getHours() * 60 + ahoraAdm.getMinutes();
         const disponibles = horasBase.filter(h =>
             !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) &&
             !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h) &&
-            !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte))
+            !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte)) &&
+            !(fechaInput === hoyAdm && parseHora(h) <= minutosAhoraAdm)
         );
         if (!disponibles.length) {
             grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-2 uppercase italic'>Sin espacios disponibles</p>"; return;
