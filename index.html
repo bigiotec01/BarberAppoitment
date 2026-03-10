@@ -1021,7 +1021,11 @@ try {
     function confirmarCita(h, f) {
         // Si ya hay cita activa, este slot es para otra persona
         if (!document.getElementById('cita-info-container').classList.contains('hidden')) {
-            abrirOtraPersona(f, h);
+            _otraPersonaFecha = f;
+            _otraPersonaHora = h;
+            document.getElementById('otra-persona-hora-label').textContent = h;
+            document.getElementById('otra-persona-nombre').value = '';
+            document.getElementById('modal-otra-persona').classList.remove('hidden');
             return;
         }
         const servicios = config.servicios || [];
