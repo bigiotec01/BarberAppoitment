@@ -377,9 +377,10 @@
     const VAPID_KEY = 'BOo7z8_7VO1efgsR5gR8ix21uNnUtcXOr-x6Y3vSc0LNvwDbD6G6A8ZEyErEdJSxc2iecP35FMrlt680SuBJGNY';
 
     async function activarNotificaciones(uid) {
+        // Mostrar estado inicial según permiso actual
+        if (Notification.permission === 'denied') { actualizarEstadoNotif(null); return; }
+        if (Notification.permission !== 'granted') { actualizarEstadoNotif(null); return; }
         try {
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') { actualizarEstadoNotif(null); return; }
             await navigator.serviceWorker.register('/firebase-messaging-sw.js');
             const swReg = await navigator.serviceWorker.ready;
             const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
@@ -387,12 +388,12 @@
                 await db.collection('usuarios').doc(uid).update({ fcmToken: token });
                 actualizarEstadoNotif(token);
             } else {
-                await db.collection('usuarios').doc(uid).update({ fcmToken: null });
+                // Token vacío: solo actualizar UI, NO borrar Firestore en carga automática
                 actualizarEstadoNotif(null);
             }
         } catch (e) {
+            // Error silencioso en carga automática: no tocar Firestore, mostrar estado neutro
             console.warn('Notificaciones no activadas:', e);
-            try { await db.collection('usuarios').doc(uid).update({ fcmToken: null }); } catch (_) {}
             actualizarEstadoNotif(null);
         }
     }
@@ -507,6 +508,11 @@
 
     async function abrirAdmin() {
         if (!currentBarber) { alert("Tu cuenta no tiene un barberId asignado. Ve a Firestore y agrega el campo barberId a tu usuario."); return; }
+        // Mostrar estado inmediato según permiso conocido, luego activarNotificaciones actualiza con el token real
+        if (Notification.permission === 'granted') {
+            const el = document.getElementById('notif-status');
+            if (el) { el.textContent = 'Verificando...'; el.className = 'text-[10px] text-zinc-400'; }
+        }
         activarNotificaciones(auth.currentUser.uid);
         const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
         if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; if(!config.bloqueosSemanales) config.bloqueosSemanales = []; }
