@@ -19,6 +19,8 @@
             #view-admin #lista-citas::-webkit-scrollbar { width: 4px; }
             #view-admin #lista-citas::-webkit-scrollbar-track { background: transparent; }
             #view-admin #lista-citas::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+            #app-left-col { position: sticky; top: 2rem; }
+            #step-1 { display: block !important; }
         }
         .barber-logo { width: 60px; height: 60px; background: url('https://cdn-icons-png.flaticon.com/512/2602/2602157.png') no-repeat center; background-size: contain; filter: drop-shadow(0 0 8px #eab308); margin: 0 auto 1rem; }
         .bg-card { background: linear-gradient(145deg, #111, #050505); border: 1px solid #222; }
@@ -130,9 +132,9 @@
         </div>
         <button onclick="logout()" class="text-[10px] bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-xl font-black">SALIR</button>
     </header>
-    <div class="md:grid md:grid-cols-2 md:gap-8 md:mt-2">
+    <div class="md:grid md:grid-cols-[1fr_1.2fr] md:gap-10 md:mt-2 md:items-start">
     <!-- Columna izquierda: cita activa + selector de barbero -->
-    <div>
+    <div id="app-left-col">
     <div id="cita-info-container" class="hidden mb-10 text-center">
         <div class="cita-activa-card p-6 rounded-[2.5rem]">
             <p class="uppercase font-black text-[10px] opacity-70">Tu cita confirmada</p>
@@ -933,7 +935,7 @@ try {
             document.getElementById('cita-info-container').classList.remove('hidden');
             document.getElementById('cita-activa-fecha').innerText = formatFecha(cita.fecha);
             document.getElementById('cita-activa-hora').innerText = cita.hora;
-            document.getElementById('step-1').classList.add('hidden');
+            if (window.innerWidth < 768) document.getElementById('step-1').classList.add('hidden');
             document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
         }
     }
@@ -979,7 +981,11 @@ try {
         if(f < hoy) return alert("Elige una fecha a partir de hoy");
         irAlPaso(p); cargarHoras(f);
     };
-    window.irAlPaso = (n) => { document.getElementById('step-1').classList.toggle('hidden', n!==1); document.getElementById('step-2').classList.toggle('hidden', n!==2); };
+    window.irAlPaso = (n) => {
+        const desktop = window.innerWidth >= 768;
+        if (!desktop) document.getElementById('step-1').classList.toggle('hidden', n !== 1);
+        document.getElementById('step-2').classList.toggle('hidden', n !== 2);
+    };
     
     async function cargarHoras(f) {
         const grid = document.getElementById('grid-horarios');
@@ -1086,7 +1092,7 @@ try {
             document.getElementById('cita-activa-fecha').innerText = formatFecha(f);
             document.getElementById('cita-activa-hora').innerText = h;
             document.getElementById('cita-info-container').classList.remove('hidden');
-            document.getElementById('step-1').classList.add('hidden');
+            if (window.innerWidth < 768) document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) docRef.delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
             _otraPersonaFecha = f;
