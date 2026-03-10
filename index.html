@@ -941,8 +941,9 @@ try {
                 const btnOtra = document.getElementById('btn-otra-persona');
                 btnOtra.classList.remove('hidden');
                 btnOtra.onclick = () => {
+                    document.getElementById('cita-info-container').classList.add('hidden');
                     document.getElementById('step-1').classList.remove('hidden');
-                    document.getElementById('step-1').scrollIntoView({ behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
             }
             document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step1-titulo').innerText = 'Agenda tu recorte'; document.getElementById('step-1').classList.remove('hidden'); }); };
@@ -1084,6 +1085,9 @@ try {
             await db.collection("citas").add({ fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
             document.getElementById('modal-otra-persona').classList.add('hidden');
             document.getElementById('btn-otra-persona').classList.add('hidden');
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('cita-info-container').classList.remove('hidden');
             alert(`✅ Cita de ${nombre} confirmada a las ${_otraPersonaHora}`);
         } catch(e) {
             alert('Error al guardar: ' + e.message);
