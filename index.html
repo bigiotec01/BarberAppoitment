@@ -453,6 +453,10 @@
         }
     };
 
+    window.addEventListener('online', () => {
+        if (auth.currentUser) activarNotificaciones(auth.currentUser.uid);
+    });
+
     messaging.onMessage((payload) => {
         const { title, body } = payload.data;
         const n = new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png' });
