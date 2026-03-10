@@ -935,9 +935,17 @@ try {
             document.getElementById('cita-info-container').classList.remove('hidden');
             document.getElementById('cita-activa-fecha').innerText = formatFecha(cita.fecha);
             document.getElementById('cita-activa-hora').innerText = cita.hora;
-            if (window.innerWidth < 768) document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step1-titulo').innerText = '+ Agendar para otra persona';
-            document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step1-titulo').innerText = 'Agenda tu recorte'; document.getElementById('step-1').classList.remove('hidden'); }); };
+            if (window.innerWidth < 768) {
+                document.getElementById('step-1').classList.add('hidden');
+                const btnOtra = document.getElementById('btn-otra-persona');
+                btnOtra.classList.remove('hidden');
+                btnOtra.onclick = () => {
+                    document.getElementById('step-1').classList.remove('hidden');
+                    document.getElementById('step-1').scrollIntoView({ behavior: 'smooth' });
+                };
+            }
+            document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step1-titulo').innerText = 'Agenda tu recorte'; document.getElementById('step-1').classList.remove('hidden'); }); };
         }
     }
 
