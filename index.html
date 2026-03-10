@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-
-<html lang="es">
+<!DOCTYPE html><html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,7 +29,6 @@
 </head>
 <body class="pb-24 md:pb-0">
 
-```
 <div id="loading" class="fixed inset-0 bg-black z-[200] flex flex-col items-center justify-center">
     <div class="barber-logo animate-pulse"></div>
     <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-4">Sincronizando Bgio System...</p>
@@ -208,14 +205,6 @@
         <div>
             <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Nombre de la Barbería</p>
             <input type="text" id="admin-nombre-barberia" placeholder="Ej: Georgie Fale Salon" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none text-center">
-            <!-- ── NUEVO: Toggle Recibir Citas ── -->
-            <div class="flex items-center justify-between mt-3 bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-xl">
-                <p class="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Recibir nuevas citas</p>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="admin-recibe-clientes" class="sr-only peer" checked>
-                    <div class="w-11 h-6 bg-zinc-700 peer-checked:bg-yellow-500 rounded-full transition-all peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                </label>
-            </div>
         </div>
         <div class="border-t border-zinc-800 pt-4">
             <p class="text-[10px] font-black uppercase text-yellow-500 mb-3 tracking-widest italic">Días Abiertos</p>
@@ -405,8 +394,8 @@
     let userData = null;
     let _registrando = false;
     const urlBarber = new URLSearchParams(window.location.search).get('b');
-    let currentBarber = urlBarber;
-    let config = { diasActivos: [1,2,3,4,5,6], horasBloqueadas: [], cierresEspeciales: [], servicios: [], bloqueosEspeciales: [], citasFijas: [], recibeClientes: true };
+    let currentBarber = urlBarber; // null si no viene de un QR/link específico
+    let config = { diasActivos: [1,2,3,4,5,6], horasBloqueadas: [], cierresEspeciales: [], servicios: [], bloqueosEspeciales: [], citasFijas: [] };
     let todasLasCitas = [];
     const parseHora = (h) => { const [t,p] = h.split(' '); let [hr,min] = t.split(':').map(Number); if(p==='PM'&&hr!==12) hr+=12; if(p==='AM'&&hr===12) hr=0; return hr*60+min; };
     const formatFecha = (fecha) => {
@@ -451,24 +440,12 @@
         if (!currentBarber) { alert("Tu cuenta no tiene un barberId asignado. Ve a Firestore y agrega el campo barberId a tu usuario."); return; }
         activarNotificaciones(auth.currentUser.uid);
         const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
-        if(confDoc.exists) {
-            config = confDoc.data();
-            if(!config.cierresEspeciales) config.cierresEspeciales = [];
-            if(!config.horasBloqueadas) config.horasBloqueadas = [];
-            if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6];
-            if(!config.servicios) config.servicios = [];
-            if(!config.bloqueosEspeciales) config.bloqueosEspeciales = [];
-            if(!config.citasFijas) config.citasFijas = [];
-            if(!config.bloqueosSemanales) config.bloqueosSemanales = [];
-            // ── NUEVO: si no existe el campo, asumir true por defecto
-            if(config.recibeClientes === undefined) config.recibeClientes = true;
-        }
+        if(confDoc.exists) { config = confDoc.data(); if(!config.cierresEspeciales) config.cierresEspeciales = []; if(!config.horasBloqueadas) config.horasBloqueadas = []; if(!config.diasActivos) config.diasActivos = [1,2,3,4,5,6]; if(!config.servicios) config.servicios = []; if(!config.bloqueosEspeciales) config.bloqueosEspeciales = []; if(!config.citasFijas) config.citasFijas = []; if(!config.bloqueosSemanales) config.bloqueosSemanales = []; }
         document.getElementById('admin-nombre-barberia').value = config.nombreBarberia || '';
-        // ── NUEVO: cargar estado del toggle
-        document.getElementById('admin-recibe-clientes').checked = config.recibeClientes !== false;
         const myLink = `https://georgiefalesalon.com/?b=${currentBarber}`;
         document.getElementById("qrcode").innerHTML = "";
         new QRCode(document.getElementById("qrcode"), { text: myLink, width: 200, height: 200 });
+        // Fecha por defecto para disponibilidad WhatsApp
         const hoy = new Date().toISOString().split('T')[0];
         document.getElementById('admin-fecha-disponibilidad').value = hoy;
         document.getElementById('admin-fecha-disponibilidad').min = hoy;
@@ -487,6 +464,7 @@ try {
     if (!fechaInput) return alert("Elige una fecha primero");
     if (!currentBarber) return alert("Error: No tienes un barberId asignado en tu perfil");
 
+    // 1. Consultar citas (Aquí es donde suele fallar por falta de Índice)
     const snap = await db.collection("citas")
                          .where("fecha", "==", fechaInput)
                          .where("barbero", "==", currentBarber)
@@ -494,6 +472,7 @@ try {
     
     const ocupadas = snap.docs.map(d => d.data().hora);
 
+    // 2. Calcular disponibles (excluir bloqueos globales, especiales y citas fijas)
     const bloqueosEspWA = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
     const citasFijasWA = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
     const diaNumWA = new Date(fechaInput).getUTCDay();
@@ -502,11 +481,13 @@ try {
     
     if (disponibles.length === 0) return alert("No hay espacios disponibles para ese día");
 
+    // 3. Crear mensaje
     const link = `https://georgiefalesalon.com/?b=${currentBarber}`;
     const fechaTexto = formatFecha(fechaInput);
     const horasTexto = disponibles.map(h => `🕐 ${h}`).join('\n');
-    const msg = `*ESPACIOS DISPONIBLES*\n📅 *${fechaTexto}*\n\n${horasTexto}\n\n🔗 Reserva: ${link}`;
+    const msg = `*ESPACIOS DISPONIBLES*\n📅 *${fechaTexto}\*\n\n${horasTexto}\n\n🔗 Reserva: ${link}`;
 
+    // 4. Abrir WhatsApp (Formato API oficial)
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
     window.location.href = waUrl;
 
@@ -514,11 +495,10 @@ try {
     console.error("Error completo:", error);
     alert("Error al conectar con la base de datos. Revisa la consola (F12) para crear el índice de Firestore.");
 }
-```
+
 
 };
 
-```
     window.verDisponibilidadAdmin = async () => {
         const fechaInput = document.getElementById('admin-fecha-disponibilidad').value;
         const preview = document.getElementById('admin-disponibilidad-preview');
@@ -606,6 +586,7 @@ try {
         const lista = document.getElementById('lista-citas'); const hoy = new Date().toISOString().split('T')[0];
         ['hoy', 'todas'].forEach(t => document.getElementById(`f-${t}`).className = t === tipo ? "flex-1 py-4 rounded-2xl text-[10px] font-black bg-yellow-500 text-black" : "flex-1 py-4 rounded-2xl text-[10px] font-black text-zinc-500");
 
+        // Generar citas fijas virtuales para un array de fechas
         function generarVirtualesFijas(fechas) {
             const virtuales = [];
             fechas.forEach(fecha => {
@@ -618,6 +599,7 @@ try {
             return virtuales;
         }
 
+        // Obtener fechas del rango según tipo
         let fechasRango = [];
         if (tipo === 'hoy') {
             fechasRango = [hoy];
@@ -627,6 +609,7 @@ try {
         const virtuales = generarVirtualesFijas(fechasRango);
 
         let reales = tipo === 'hoy' ? todasLasCitas.filter(c => c.fecha === hoy) : todasLasCitas;
+        // Evitar duplicados: si ya existe una cita real a la misma fecha/hora/nombre, no agregar la virtual
         const clavesReales = new Set(reales.map(c => `${c.fecha}-${c.hora}-${c.nombre.toLowerCase()}`));
         const virtualesSinDuplicar = virtuales.filter(v => !clavesReales.has(`${v.fecha}-${v.hora}-${v.nombre.toLowerCase()}`));
         const todas = [...reales, ...virtualesSinDuplicar];
@@ -660,7 +643,7 @@ try {
             const actions = c.esFija
                 ? `<div class="flex items-center gap-4">${c.tel ? waBtn : '<span class="text-[8px] text-zinc-600 italic font-black uppercase">recurrente</span>'}</div>`
                 : `<div class="flex items-center gap-4">${waBtn}<button onclick="borrarCitaAdmin('${c.id}')" class="bg-red-900/40 w-11 h-11 flex items-center justify-center rounded-full text-red-500 font-black">X</button></div>`;
-            return `<div class="${cardClass} p-5 rounded-3xl flex justify-between items-center"><div><p class="font-black text-sm uppercase text-white flex items-center gap-2">${c.nombre}${badge}</p><p class="text-yellow-500 font-bold text-[10px] italic">${formatFecha(c.fecha)} · ${c.hora}</p>${servicioTag}</div>${actions}</div>`;
+            return `<div class="${cardClass} p-5 rounded-3xl flex justify-between items-center"><div><p class="font-black text-sm uppercase text-white flex items-center gap-2">${c.nombre}${badge}</p><p class="text-yellow-500 font-bold text-\[10px\] italic">${formatFecha(c.fecha)} · ${c.hora}</p>${servicioTag}</div>${actions}</div>`;
         }).join('');
     };
 
@@ -674,6 +657,7 @@ try {
         domingo.setDate(lunes.getDate() + 6);
         const lunesStr = lunes.toISOString().split('T')[0];
         const domingoStr = domingo.toISOString().split('T')[0];
+        // Generar citas fijas virtuales para la semana y hoy
         const citasFijasStats = [];
         for (let i = 0; i < 7; i++) {
             const d = new Date(lunes); d.setDate(lunes.getDate() + i);
@@ -695,14 +679,7 @@ try {
         document.getElementById('stat-hora').textContent = horaPopular;
     }
 
-    // ── NUEVO: guardarConfig incluye recibeClientes
-    window.guardarConfig = async () => {
-        config.nombreBarberia = document.getElementById('admin-nombre-barberia').value.trim();
-        config.recibeClientes = document.getElementById('admin-recibe-clientes').checked;
-        await db.collection("config").doc(`horarios_${currentBarber}`).set(config);
-        alert("Ajustes Guardados ✅");
-    };
-
+    window.guardarConfig = async () => { config.nombreBarberia = document.getElementById('admin-nombre-barberia').value.trim(); await db.collection("config").doc(`horarios_${currentBarber}`).set(config); alert("Ajustes Guardados ✅"); };
     window.toggleDia = (i) => { if(config.diasActivos.includes(i)) config.diasActivos = config.diasActivos.filter(x => x !== i); else config.diasActivos.push(i); renderAdminControls(); };
     window.toggleHora = (h) => { if(!config.horasBloqueadas) config.horasBloqueadas = []; if(config.horasBloqueadas.includes(h)) config.horasBloqueadas = config.horasBloqueadas.filter(x => x !== h); else config.horasBloqueadas.push(h); renderAdminControls(); };
     window.agregarCierre = () => { const f = document.getElementById('admin-fecha-cierre').value; if(f && !config.cierresEspeciales.includes(f)) { config.cierresEspeciales.push(f); renderAdminControls(); } };
@@ -783,34 +760,23 @@ try {
         document.getElementById('user-display-name').innerText = userData.nombre;
         inicializarFechaPicker();
 
-        // URL tiene prioridad, luego perfil guardado
+        // Determinar barbero: URL tiene prioridad, luego perfil guardado, sino mostrar selector
         currentBarber = urlBarber || userData.barberId || null;
 
         if (currentBarber) {
             const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
             if (confDoc.exists) config = confDoc.data();
-
-            // ── NUEVO: verificar si el barbero aún recibe citas
-            if (config.recibeClientes === false) {
-                // Limpiar barbero guardado y mostrar selector
-                currentBarber = null;
-                try {
-                    await db.collection("usuarios").doc(auth.currentUser.uid).update({ barberId: null });
-                } catch(e) {}
-                userData.barberId = null;
-                document.getElementById('step-1').classList.add('hidden');
-                mostrarSelectorBarbero();
-            } else {
-                await mostrarBarberActivo();
-                obtenerCitaPendiente(auth.currentUser.uid);
-            }
+            await mostrarBarberActivo();
+            obtenerCitaPendiente(auth.currentUser.uid);
         } else {
+            // Sin barbero asignado: ocultar step-1 y mostrar selector
             document.getElementById('step-1').classList.add('hidden');
             mostrarSelectorBarbero();
         }
     }
 
     async function mostrarBarberActivo() {
+        // Buscar el nombre del barbero entre los admins
         const snap = await db.collection("usuarios").where("rol", "==", "admin").get();
         const barber = snap.docs.map(d => d.data()).find(b => b.barberId === currentBarber);
         const nombre = barber ? barber.nombre : currentBarber;
@@ -824,22 +790,8 @@ try {
 
     async function cargarBarberos() {
         const snap = await db.collection("usuarios").where("rol", "==", "admin").get();
+        const barberos = snap.docs.map(d => d.data()).filter(b => b.barberId);
         const lista = document.getElementById('lista-barberos');
-        lista.innerHTML = "<p class='text-zinc-600 text-xs animate-pulse py-4'>Cargando barberos...</p>";
-
-        // ── NUEVO: filtrar solo barberos que reciben citas
-        const resultados = await Promise.all(
-            snap.docs.map(async d => {
-                const b = d.data();
-                if (!b.barberId) return null;
-                const confDoc = await db.collection("config").doc(`horarios_${b.barberId}`).get();
-                const conf = confDoc.exists ? confDoc.data() : {};
-                // Si recibeClientes no existe en el doc, se asume true (barbero activo)
-                return conf.recibeClientes !== false ? b : null;
-            })
-        );
-        const barberos = resultados.filter(Boolean);
-
         if (barberos.length === 0) {
             lista.innerHTML = "<p class='text-zinc-500 text-xs py-4 text-center'>No hay barberos disponibles en este momento</p>";
             return;
@@ -863,8 +815,10 @@ try {
 
     window.seleccionarBarbero = async (barberId, nombre) => {
         currentBarber = barberId;
+        // Guardar elección en el perfil del cliente
         await db.collection("usuarios").doc(auth.currentUser.uid).update({ barberId: barberId });
         userData.barberId = barberId;
+        // Actualizar chip de barbero
         document.getElementById('barbero-nombre-display').innerText = nombre;
         document.getElementById('barbero-avatar').innerText = nombre ? nombre[0].toUpperCase() : '?';
         document.getElementById('barbero-seleccionado').classList.remove('hidden');
@@ -872,6 +826,7 @@ try {
         document.getElementById('step-1').classList.remove('hidden');
         document.getElementById('step-2').classList.add('hidden');
         document.getElementById('cita-info-container').classList.add('hidden');
+        // Cargar config del barbero seleccionado
         const confDoc = await db.collection("config").doc(`horarios_${currentBarber}`).get();
         if (confDoc.exists) config = confDoc.data();
         obtenerCitaPendiente(auth.currentUser.uid);
@@ -1087,7 +1042,6 @@ try {
             alert(e.code === 'auth/email-already-in-use' ? 'Este email ya está registrado' : 'Error al crear cuenta');
         }
     };
-
     // ── CITA MANUAL ────────────────────────────────────────────────
     window.abrirModalManual = function() {
         const today = new Date().toISOString().split('T')[0];
@@ -1170,7 +1124,6 @@ try {
         }
     };
     // ───────────────────────────────────────────────────────────────
-
     window.abrirReporteMes = () => {
         const mes = new Date().toISOString().slice(0,7);
         document.getElementById('input-mes-reporte').value = mes;
@@ -1270,7 +1223,7 @@ try {
         </div>
     </div>
 </div>
-```
+
 
 </body>
 </html>
