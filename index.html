@@ -55,6 +55,7 @@
         <input type="password" id="login-pass" placeholder="Contraseña" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
         <button onclick="login()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-2xl uppercase">Entrar</button>
         <p class="text-xs text-zinc-500">¿Nuevo cliente? <button onclick="toggleAuth('reg')" class="text-yellow-500 font-bold underline">Regístrate</button></p>
+        <p class="text-xs text-zinc-600"><button onclick="olvidéContraseña()" class="underline hover:text-zinc-400">Olvidé mi contraseña</button></p>
     </div>
     <div id="form-reg" class="hidden w-full space-y-4 text-left">
         <input type="text" id="reg-nom" placeholder="Tu Nombre" autocomplete="off" class="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white outline-none">
@@ -1140,6 +1141,16 @@ try {
         catch(e) { alert(['auth/user-not-found','auth/wrong-password','auth/invalid-credential'].includes(e.code) ? 'Email o contraseña incorrectos' : 'Error de acceso'); }
     };
     window.logout = () => { auth.signOut(); location.reload(); };
+    window.olvidéContraseña = async () => {
+        const email = document.getElementById('login-email').value.trim();
+        if (!email) return alert('Ingresa tu email primero');
+        try {
+            await auth.sendPasswordResetEmail(email);
+            alert(`✅ Te enviamos un email a ${email} para restablecer tu contraseña`);
+        } catch(e) {
+            alert(e.code === 'auth/user-not-found' ? 'No existe una cuenta con ese email' : 'Error al enviar el email');
+        }
+    };
     window.toggleAuth = (t) => { document.getElementById('form-login').classList.toggle('hidden', t==='reg'); document.getElementById('form-reg').classList.toggle('hidden', t==='login'); if(t==='reg') { ['reg-nom','reg-tel','reg-email','reg-pass'].forEach(id => document.getElementById(id).value = ''); } };
     window.toggleQR = () => document.getElementById('qrModal').classList.toggle('hidden');
     window.registrar = async () => {
