@@ -172,7 +172,7 @@
     <!-- Columna derecha: pasos de agendamiento -->
     <div>
     <section id="step-1" class="bg-card p-8 rounded-[3rem] shadow-2xl text-center">
-        <h2 class="text-xl font-black mb-6 uppercase italic text-white tracking-tighter">Agenda tu recorte</h2>
+        <h2 id="step1-titulo" class="text-xl font-black mb-6 uppercase italic text-white tracking-tighter">Agenda tu recorte</h2>
         <div class="flex gap-2 mb-6">
             <select id="fecha-dia" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
             <select id="fecha-mes" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
@@ -936,7 +936,8 @@ try {
             document.getElementById('cita-activa-fecha').innerText = formatFecha(cita.fecha);
             document.getElementById('cita-activa-hora').innerText = cita.hora;
             if (window.innerWidth < 768) document.getElementById('step-1').classList.add('hidden');
-            document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
+            document.getElementById('step1-titulo').innerText = '+ Agendar para otra persona';
+            document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('step1-titulo').innerText = 'Agenda tu recorte'; document.getElementById('step-1').classList.remove('hidden'); }); };
         }
     }
 
@@ -1009,6 +1010,11 @@ try {
     let _otraPersonaHora = null, _otraPersonaFecha = null;
 
     function confirmarCita(h, f) {
+        // Si ya hay cita activa, este slot es para otra persona
+        if (!document.getElementById('cita-info-container').classList.contains('hidden')) {
+            abrirOtraPersona(f, h);
+            return;
+        }
         const servicios = config.servicios || [];
         if (servicios.length === 0) {
             abrirConfirmacionCita(h, f, null, null);
@@ -1092,6 +1098,7 @@ try {
             document.getElementById('cita-activa-fecha').innerText = formatFecha(f);
             document.getElementById('cita-activa-hora').innerText = h;
             document.getElementById('cita-info-container').classList.remove('hidden');
+            document.getElementById('step1-titulo').innerText = '+ Agendar para otra persona';
             if (window.innerWidth < 768) document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) docRef.delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
