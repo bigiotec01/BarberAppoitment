@@ -978,7 +978,9 @@ try {
         const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === f).map(b => b.hora);
         const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, f)).map(c => c.hora);
         const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
-        horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h) && !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte))) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
+        const hoy = new Date().toISOString().split('T')[0];
+        const ahora = new Date(); const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+        horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h) && !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte)) && !(f === hoy && parseHora(h) <= minutosAhora)) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
         if(!grid.innerHTML) grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-10 uppercase italic'>Sin horarios disponibles</p>";
     }
 
