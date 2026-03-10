@@ -460,7 +460,8 @@
     });
 
     messaging.onMessage((payload) => {
-        const { title, body } = payload.data;
+        const title = payload.notification?.title || payload.data?.title || 'Nueva Cita';
+        const body = payload.notification?.body || payload.data?.body || '';
         const n = new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png' });
         setTimeout(() => n.close(), 6000);
     });
