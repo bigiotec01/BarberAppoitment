@@ -135,15 +135,10 @@
     <div class="md:grid md:grid-cols-[1fr_1.2fr] md:gap-10 md:mt-2 md:items-start">
     <!-- Columna izquierda: cita activa + selector de barbero -->
     <div id="app-left-col">
-    <div id="cita-info-container" class="hidden mb-10 text-center">
-        <div class="cita-activa-card p-6 rounded-[2.5rem]">
-            <p class="uppercase font-black text-[10px] opacity-70">Tu cita confirmada</p>
-            <h4 id="cita-activa-fecha" class="text-2xl font-black italic uppercase">...</h4>
-            <p id="cita-activa-hora" class="text-xl font-black bg-black/10 inline-block px-5 py-1 rounded-full mt-2">...</p>
-            <button id="btn-cancelar-propia" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
-            <button id="btn-otra-persona" class="hidden mt-3 w-full text-[10px] font-black uppercase bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 py-3 rounded-2xl active:scale-95 transition-transform">+ Agregar cita para otra persona</button>
-        </div>
-        <div class="mt-4 bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-left">
+    <div id="cita-info-container" class="hidden mb-10 text-center space-y-4">
+        <div id="citas-lista" class="space-y-4"></div>
+        <button id="btn-otra-persona" class="hidden w-full text-[10px] font-black uppercase bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 py-3 rounded-2xl active:scale-95 transition-transform">+ Agregar cita para otra persona</button>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-left">
             <p class="text-[10px] text-zinc-400 leading-relaxed">⚠️ Al no asistir a tu cita ni cancelarla con anticipación, se aplica una <span class="text-yellow-400 font-black">penalidad del 50%</span> del servicio. Este pago es requerido para agendar una nueva cita. Gracias.</p>
         </div>
     </div>
@@ -931,11 +926,20 @@ try {
     async function obtenerCitaPendiente(uid) {
         const hoy = new Date().toISOString().split('T')[0];
         const snap = await db.collection("citas").where("uid", "==", uid).where("barbero", "==", currentBarber).get();
-        const cita = snap.docs.map(d => ({id: d.id, ...d.data()})).find(c => c.fecha >= hoy);
-        if(cita) {
+        const citas = snap.docs.map(d => ({id: d.id, ...d.data()}))
+            .filter(c => c.fecha >= hoy)
+            .sort((a, b) => { if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha); return parseHora(a.hora) - parseHora(b.hora); });
+        if (citas.length > 0) {
+            document.getElementById('citas-lista').innerHTML = citas.map(cita => `
+                <div class="cita-activa-card p-6 rounded-[2.5rem]">
+                    <p class="uppercase font-black text-[10px] opacity-70">Tu cita confirmada</p>
+                    ${cita.nombre && cita.nombre !== userData?.nombre ? `<p class="text-[10px] text-yellow-400 font-black uppercase mb-1">${cita.nombre}</p>` : ''}
+                    <h4 class="text-2xl font-black italic uppercase">${formatFecha(cita.fecha)}</h4>
+                    <p class="text-xl font-black bg-black/10 inline-block px-5 py-1 rounded-full mt-2">${cita.hora}</p>
+                    <button onclick="cancelarCita('${cita.id}')" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
+                </div>
+            `).join('');
             document.getElementById('cita-info-container').classList.remove('hidden');
-            document.getElementById('cita-activa-fecha').innerText = formatFecha(cita.fecha);
-            document.getElementById('cita-activa-hora').innerText = cita.hora;
             document.getElementById('step1-titulo').innerText = '+ Agendar para otra persona';
             if (window.innerWidth < 768) {
                 document.getElementById('step-1').classList.add('hidden');
@@ -947,9 +951,20 @@ try {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
             }
-            document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) db.collection("citas").doc(cita.id).delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step1-titulo').innerText = 'Agenda tu recorte'; document.getElementById('step-1').classList.remove('hidden'); }); };
+        } else {
+            document.getElementById('cita-info-container').classList.add('hidden');
+            document.getElementById('btn-otra-persona').classList.add('hidden');
+            document.getElementById('step1-titulo').innerText = 'Agenda tu recorte';
+            document.getElementById('step-1').classList.remove('hidden');
         }
     }
+
+    window.cancelarCita = async (citaId) => {
+        if (!confirm("¿Cancelar?")) return;
+        await db.collection("citas").doc(citaId).delete();
+        const uid = firebase.auth().currentUser?.uid;
+        if (uid) await obtenerCitaPendiente(uid);
+    };
 
     function inicializarFechaPicker() {
         const hoy = new Date();
@@ -1089,11 +1104,9 @@ try {
             } catch(e) {}
             await db.collection("citas").add({ fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
             document.getElementById('modal-otra-persona').classList.add('hidden');
-            document.getElementById('btn-otra-persona').classList.add('hidden');
-            document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('cita-info-container').classList.remove('hidden');
             alert(`✅ Cita de ${nombre} confirmada a las ${_otraPersonaHora}`);
+            await obtenerCitaPendiente(auth.currentUser.uid);
         } catch(e) {
             alert('Error al guardar: ' + e.message);
         } finally {
@@ -1112,17 +1125,9 @@ try {
             const datos = { fecha:f, hora:h, barbero: currentBarber, nombre: userData.nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() };
             if (servicio) { datos.servicio = servicio; datos.precio = precio; }
             const docRef = await db.collection("citas").add(datos);
-            document.getElementById('cita-activa-fecha').innerText = formatFecha(f);
-            document.getElementById('cita-activa-hora').innerText = h;
-            document.getElementById('cita-info-container').classList.remove('hidden');
-            document.getElementById('step1-titulo').innerText = '+ Agendar para otra persona';
-            if (window.innerWidth < 768) document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('btn-cancelar-propia').onclick = () => { if(confirm("¿Cancelar?")) docRef.delete().then(() => { document.getElementById('cita-info-container').classList.add('hidden'); document.getElementById('btn-otra-persona').classList.add('hidden'); document.getElementById('step-1').classList.remove('hidden'); }); };
             _otraPersonaFecha = f;
-            const btnOtra = document.getElementById('btn-otra-persona');
-            btnOtra.classList.remove('hidden');
-            btnOtra.onclick = () => abrirOtraPersona(f, h);
+            await obtenerCitaPendiente(auth.currentUser.uid);
         }
     }
 
