@@ -671,11 +671,12 @@ try {
             `<button onclick="toggleDia(${i})" class="text-[10px] p-3 rounded-xl font-black ${config.diasActivos.includes(i) ? 'bg-yellow-500 text-black' : 'bg-zinc-800 text-zinc-500'}">${d}</button>`
         ).join('');
         const hoy = new Date().toISOString().split('T')[0];
+        const nowMinsAdmin = new Date().getHours() * 60 + new Date().getMinutes();
         const horasOcupadasHoy = todasLasCitas.filter(c => c.fecha === hoy).map(c => c.hora);
-        hG.innerHTML = horasBase.map(h => {
+        hG.innerHTML = horasBase.filter(h => parseHora(h) >= nowMinsAdmin).map(h => {
             let cls;
             if (config.horasBloqueadas?.includes(h)) cls = 'bg-red-900 border-red-500 text-white';
-            else if (horasOcupadasHoy.includes(h)) cls = 'bg-yellow-600/20 border-yellow-500 text-yellow-400';
+            else if (horasOcupadasHoy.includes(h)) cls = 'bg-yellow-500/20 border-yellow-500 text-yellow-400';
             else cls = 'bg-zinc-800 border-zinc-700 text-zinc-400';
             return `<button onclick="toggleHora('${h}')" class="text-[9px] p-3 rounded-xl border ${cls}">${h}</button>`;
         }).join('');
