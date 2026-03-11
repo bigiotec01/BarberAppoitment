@@ -177,6 +177,7 @@
         </div>
         <input type="hidden" id="fecha" value="">
         <button onclick="validarYPasar(2)" class="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase">Ver Disponibilidad</button>
+        <button id="btn-volver-cita" onclick="volverACitaActiva()" class="hidden w-full mt-3 py-3 text-zinc-500 font-bold uppercase text-[10px]">← Volver a mi cita</button>
     </section>
     <section id="step-2" class="hidden space-y-4">
         <p id="step2-fecha" class="text-center text-yellow-500 font-black text-sm uppercase italic tracking-wide"></p>
@@ -950,16 +951,26 @@ try {
                 btnOtra.onclick = () => {
                     document.getElementById('cita-info-container').classList.add('hidden');
                     document.getElementById('step-1').classList.remove('hidden');
+                    document.getElementById('btn-volver-cita').classList.remove('hidden');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
             }
         } else {
             document.getElementById('cita-info-container').classList.add('hidden');
             document.getElementById('btn-otra-persona').classList.add('hidden');
+            document.getElementById('btn-volver-cita').classList.add('hidden');
             document.getElementById('step1-titulo').innerText = 'Agenda tu recorte';
             document.getElementById('step-1').classList.remove('hidden');
         }
     }
+
+    window.volverACitaActiva = () => {
+        document.getElementById('step-1').classList.add('hidden');
+        document.getElementById('step-2').classList.add('hidden');
+        document.getElementById('btn-volver-cita').classList.add('hidden');
+        document.getElementById('cita-info-container').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     window.cancelarCita = async (citaId) => {
         if (!confirm("¿Cancelar?")) return;
