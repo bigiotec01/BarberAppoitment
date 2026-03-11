@@ -484,8 +484,7 @@
         if (auth.currentUser) activarNotificaciones(auth.currentUser.uid);
     });
 
-    if (_msgListener) _msgListener();
-    _msgListener = messaging.onMessage((payload) => {
+    messaging.onMessage((payload) => {
         // Si el payload ya trae campo "notification", el browser/SW lo puede haber
         // mostrado automáticamente. Usamos siempre el SW para evitar duplicados.
         const title = payload.notification?.title || payload.data?.title || 'Nueva Cita';
@@ -657,7 +656,6 @@ try {
     };
 
     let _citasListener = null;
-    let _msgListener = null;
     function descargarCitasAdmin() {
         const lista = document.getElementById('lista-citas');
         lista.innerHTML = "<p class='text-center opacity-30 text-xs animate-pulse'>CARGANDO...</p>";
@@ -1196,7 +1194,7 @@ try {
         try { await auth.signInWithEmailAndPassword(email, pass); }
         catch(e) { alert(['auth/user-not-found','auth/wrong-password','auth/invalid-credential'].includes(e.code) ? 'Email o contraseña incorrectos' : 'Error de acceso'); }
     };
-    window.logout = () => { if (_citasListener) _citasListener(); if (_msgListener) _msgListener(); auth.signOut(); location.reload(); };
+    window.logout = () => { if (_citasListener) _citasListener(); auth.signOut(); location.reload(); };
     window.olvidéContraseña = async () => {
         const email = document.getElementById('login-email').value.trim();
         if (!email) return alert('Ingresa tu email primero');
