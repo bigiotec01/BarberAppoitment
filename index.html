@@ -713,7 +713,7 @@ try {
             const proxima = sorted.find(c => parseHora(c.hora) >= nowMins);
             if (proxima) proximaId = proxima.id;
         }
-        const citasFiltradas = tipo === 'hoy' ? sorted.filter(c => parseHora(c.hora) >= nowMins || c.id === proximaId) : sorted;
+        const citasFiltradas = sorted.filter(c => c.fecha > hoy || (c.fecha === hoy && parseHora(c.hora) >= nowMins));
         if (!citasFiltradas.length) { lista.innerHTML = "<p class='text-center py-10 opacity-20 text-[10px] font-black italic uppercase'>Sin Citas</p>"; return; }
         lista.innerHTML = citasFiltradas.map(c => {
             const msg = encodeURIComponent(`Hola ${c.nombre}, recordatorio de tu recorte con ${config.nombreBarberia || 'la barbería'} hoy ${c.fecha} a las ${c.hora}.`);
