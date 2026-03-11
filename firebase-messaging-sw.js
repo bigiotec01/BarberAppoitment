@@ -12,13 +12,19 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
+    // Si la app está abierta y visible, la página ya muestra la notificación
+    // con onMessage → evitar duplicado
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const appAbierta = clients.some(c => c.visibilityState === 'visible');
+    if (appAbierta) return;
+
     const title = payload.notification?.title || payload.data?.title || 'Nueva Cita';
-    const body = payload.notification?.body || payload.data?.body || '';
+    const body  = payload.notification?.body  || payload.data?.body  || '';
     self.registration.showNotification(title, {
         body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png',
-        badge: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png',
+        icon:    'https://cdn-icons-png.flaticon.com/512/2602/2602157.png',
+        badge:   'https://cdn-icons-png.flaticon.com/512/2602/2602157.png',
         vibrate: [200, 100, 200],
     });
 });

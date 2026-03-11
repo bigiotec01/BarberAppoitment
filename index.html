@@ -458,10 +458,16 @@
     });
 
     messaging.onMessage((payload) => {
+        // Si el payload ya trae campo "notification", el browser/SW lo puede haber
+        // mostrado automáticamente. Usamos siempre el SW para evitar duplicados.
         const title = payload.notification?.title || payload.data?.title || 'Nueva Cita';
-        const body = payload.notification?.body || payload.data?.body || '';
-        const n = new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png' });
-        setTimeout(() => n.close(), 6000);
+        const body  = payload.notification?.body  || payload.data?.body  || '';
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, {
+                body,
+                icon: 'https://cdn-icons-png.flaticon.com/512/2602/2602157.png',
+            });
+        });
     });
 
     const horasBase = ["07:00 AM", "07:30 AM", "08:00 AM", "08:30 AM", "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM", "05:00 PM", "05:30 PM"];
