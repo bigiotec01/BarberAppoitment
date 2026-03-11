@@ -942,7 +942,7 @@ try {
             document.getElementById('citas-lista').innerHTML = citas.map(cita => `
                 <div class="cita-activa-card p-6 rounded-[2.5rem]">
                     <p class="uppercase font-black text-[10px] opacity-70">Tu cita confirmada</p>
-                    ${cita.nombre && cita.nombre !== userData?.nombre ? `<p class="text-[10px] text-yellow-400 font-black uppercase mb-1">${cita.nombre}</p>` : ''}
+                    ${cita.nombre && cita.nombre !== userData?.nombre ? `<p class="text-[10px] text-black font-black uppercase mb-1">${cita.nombre}</p>` : ''}
                     <h4 class="text-2xl font-black italic uppercase">${formatFecha(cita.fecha)}</h4>
                     <p class="text-xl font-black bg-black/10 inline-block px-5 py-1 rounded-full mt-2">${cita.hora}</p>
                     <button onclick="cancelarCita('${cita.id}')" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
