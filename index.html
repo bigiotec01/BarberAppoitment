@@ -935,8 +935,9 @@ try {
     async function obtenerCitaPendiente(uid) {
         const hoy = new Date().toISOString().split('T')[0];
         const snap = await db.collection("citas").where("uid", "==", uid).where("barbero", "==", currentBarber).get();
+        const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
         const citas = snap.docs.map(d => ({id: d.id, ...d.data()}))
-            .filter(c => c.fecha >= hoy)
+            .filter(c => c.fecha > hoy || (c.fecha === hoy && parseHora(c.hora) > nowMins))
             .sort((a, b) => { if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha); return parseHora(a.hora) - parseHora(b.hora); });
         if (citas.length > 0) {
             document.getElementById('citas-lista').innerHTML = citas.map(cita => `
