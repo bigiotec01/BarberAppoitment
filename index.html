@@ -189,6 +189,29 @@
     <p class="text-center text-zinc-700 text-[9px] font-black uppercase tracking-widest mt-10">Bgio System · v3.5</p>
 </div>
 
+<!-- Modal Novedades Admin -->
+<div id="modal-novedades" class="hidden fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/80 backdrop-blur-sm">
+    <div class="bg-zinc-900 border border-yellow-500/40 rounded-3xl p-7 max-w-sm w-full shadow-2xl">
+        <p class="text-[9px] font-black uppercase text-yellow-500 tracking-widest mb-1">Novedades</p>
+        <h3 class="text-xl font-black uppercase italic text-white mb-5 leading-tight">¿Qué hay de nuevo?</h3>
+        <ul class="space-y-3 mb-7">
+            <li class="flex gap-3 items-start">
+                <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">Las citas pasadas del día ya no aparecen en el panel — solo ves las próximas.</p>
+            </li>
+            <li class="flex gap-3 items-start">
+                <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">El ícono de la app mejoró su visibilidad en modo oscuro en iPhone.</p>
+            </li>
+            <li class="flex gap-3 items-start">
+                <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">Los clientes ya no ven su cita una vez que la hora pasó, pudiendo agendar de nuevo.</p>
+            </li>
+        </ul>
+        <button onclick="cerrarNovedades()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest">Entendido</button>
+    </div>
+</div>
+
 <div id="view-admin" class="hidden max-w-6xl mx-auto p-5 md:p-8">
     <header class="flex justify-between items-center mb-5">
         <h2 class="text-xl font-black text-yellow-500 italic uppercase leading-none">ADMIN PANEL</h2>
@@ -542,7 +565,16 @@
         poblarSelectHoras();
         renderAdminControls();
         descargarCitasAdmin();
+        const NOVEDADES_KEY = 'novedades_v3';
+        if (!localStorage.getItem(NOVEDADES_KEY)) {
+            document.getElementById('modal-novedades').classList.remove('hidden');
+        }
     }
+
+    window.cerrarNovedades = () => {
+        localStorage.setItem('novedades_v3', '1');
+        document.getElementById('modal-novedades').classList.add('hidden');
+    };
 
    window.enviarDisponibilidadWhatsApp = async () => {
 try {
