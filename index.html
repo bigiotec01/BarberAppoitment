@@ -685,7 +685,7 @@ try {
             `<button onclick="toggleDia(${i})" class="text-[10px] p-3 rounded-xl font-black ${config.diasActivos.includes(i) ? 'bg-yellow-500 text-black' : 'bg-zinc-800 text-zinc-500'}">${d}</button>`
         ).join('');
         const hoy = fechaLocal();
-        const horasOcupadasHoy = todasLasCitas.filter(c => c.fecha === hoy).map(c => c.hora);
+        const horasOcupadasHoy = todasLasCitas.filter(c => c.fecha === hoy && c.estado !== 'cancelada').map(c => c.hora);
         hG.innerHTML = horasBase.map(h => {
             let cls;
             if (config.horasBloqueadas?.includes(h)) cls = 'bg-red-900 border-red-500 text-white';
@@ -765,7 +765,10 @@ try {
             const msg = encodeURIComponent(`Hola ${c.nombre}, recordatorio de tu recorte con ${config.nombreBarberia || 'la barbería'} hoy ${c.fecha} a las ${c.hora}.`);
             let cardClass = 'bg-card border border-zinc-800';
             let badge = '';
-            if (c.id === proximaId) {
+            if (c.estado === 'cancelada') {
+                cardClass = 'bg-red-900/10 border border-red-800/40 opacity-60';
+                badge = `<span class="text-[8px] bg-red-800 text-white font-black px-2 py-0.5 rounded-full uppercase ml-2">CANCELADA</span>`;
+            } else if (c.id === proximaId) {
                 cardClass = 'bg-yellow-500/10 border border-yellow-500';
                 badge = `<span class="text-[8px] bg-yellow-500 text-black font-black px-2 py-0.5 rounded-full uppercase ml-2">PRÓXIMA</span>`;
             } else if (c.esFija) {
@@ -806,8 +809,8 @@ try {
         const clavesReales = new Set(todasLasCitas.map(c => `${c.fecha}-${c.hora}`));
         const fijasSinDuplicar = citasFijasStats.filter(v => !clavesReales.has(`${v.fecha}-${v.hora}`));
         const todasConFijas = [...todasLasCitas, ...fijasSinDuplicar];
-        const hoyCount = todasConFijas.filter(c => c.fecha === hoy).length;
-        const semanaCount = todasConFijas.filter(c => c.fecha >= lunesStr && c.fecha <= domingoStr).length;
+        const hoyCount = todasConFijas.filter(c => c.fecha === hoy && c.estado !== 'cancelada').length;
+        const semanaCount = todasConFijas.filter(c => c.fecha >= lunesStr && c.fecha <= domingoStr && c.estado !== 'cancelada').length;
         const horaCount = {};
         todasLasCitas.forEach(c => { horaCount[c.hora] = (horaCount[c.hora] || 0) + 1; });
         const horaPopular = Object.entries(horaCount).sort((a,b) => b[1]-a[1])[0]?.[0] || '-';
@@ -983,6 +986,7 @@ try {
         const snap = await db.collection("citas").where("uid", "==", uid).where("barbero", "==", currentBarber).get();
         const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
         const citas = snap.docs.map(d => ({id: d.id, ...d.data()}))
+            .filter(c => c.estado !== 'cancelada')
             .filter(c => c.fecha > hoy || (c.fecha === hoy && parseHora(c.hora) > nowMins))
             .sort((a, b) => { if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha); return parseHora(a.hora) - parseHora(b.hora); });
         if (citas.length > 0) {
@@ -1027,7 +1031,7 @@ try {
 
     window.cancelarCita = async (citaId) => {
         if (!confirm("¿Cancelar?")) return;
-        await db.collection("citas").doc(citaId).delete();
+        await db.collection("citas").doc(citaId).update({ estado: 'cancelada' });
         const uid = firebase.auth().currentUser?.uid;
         if (uid) await obtenerCitaPendiente(uid);
     };

@@ -28,17 +28,21 @@ exports.notificarNuevaCita = functions.firestore
 
 exports.notificarCitaCancelada = functions.firestore
     .document("citas/{citaId}")
-    .onDelete(async (snap) => {
-        const cita = snap.data();
-        const token = cita.adminToken;
+    .onUpdate(async (change) => {
+        const before = change.before.data();
+        const after = change.after.data();
 
+        // Solo disparar cuando cambia a cancelada
+        if (before.estado === 'cancelada' || after.estado !== 'cancelada') return null;
+
+        const token = after.adminToken;
         if (!token) return null;
 
         try {
             await admin.messaging().send({
                 notification: {
-                    title: `❌ Cita Cancelada - ${cita.nombre}`,
-                    body: `${cita.fecha} a las ${cita.hora}`,
+                    title: `❌ Cita Cancelada - ${after.nombre}`,
+                    body: `${after.fecha} a las ${after.hora}`,
                 },
                 token,
             });
