@@ -507,9 +507,9 @@
     let todasLasCitas = [];
     const parseHora = (h) => { const [t,p] = h.split(' '); let [hr,min] = t.split(':').map(Number); if(p==='PM'&&hr!==12) hr+=12; if(p==='AM'&&hr===12) hr=0; return hr*60+min; };
     const formatFecha = (fecha) => {
-        const hoy = new Date().toISOString().split('T')[0];
+        const _hoyD = new Date(); const hoy = `${_hoyD.getFullYear()}-${String(_hoyD.getMonth()+1).padStart(2,'0')}-${String(_hoyD.getDate()).padStart(2,'0')}`;
         const mananaD = new Date(); mananaD.setDate(mananaD.getDate() + 1);
-        const manana = mananaD.toISOString().split('T')[0];
+        const manana = `${mananaD.getFullYear()}-${String(mananaD.getMonth()+1).padStart(2,'0')}-${String(mananaD.getDate()).padStart(2,'0')}`;
         if (fecha === hoy) return 'Hoy';
         if (fecha === manana) return 'Mañana';
         const [y, m, d] = fecha.split('-').map(Number);
