@@ -21,3 +21,22 @@ exports.notificarNuevaCita = functions.firestore
 
         return null;
     });
+
+exports.notificarCitaCancelada = functions.firestore
+    .document("citas/{citaId}")
+    .onDelete(async (snap) => {
+        const cita = snap.data();
+        const token = cita.adminToken;
+
+        if (!token) return null;
+
+        await admin.messaging().send({
+            notification: {
+                title: `❌ Cita Cancelada - ${cita.nombre}`,
+                body: `${cita.fecha} a las ${cita.hora}`,
+            },
+            token,
+        });
+
+        return null;
+    });
