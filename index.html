@@ -505,6 +505,7 @@
     let currentBarber = urlBarber; // null si no viene de un QR/link específico
     let config = { diasActivos: [1,2,3,4,5,6], horasBloqueadas: [], cierresEspeciales: [], servicios: [], bloqueosEspeciales: [], citasFijas: [] };
     let todasLasCitas = [];
+    const fechaLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const parseHora = (h) => { const [t,p] = h.split(' '); let [hr,min] = t.split(':').map(Number); if(p==='PM'&&hr!==12) hr+=12; if(p==='AM'&&hr===12) hr=0; return hr*60+min; };
     const formatFecha = (fecha) => {
         const _hoyD = new Date(); const hoy = `${_hoyD.getFullYear()}-${String(_hoyD.getMonth()+1).padStart(2,'0')}-${String(_hoyD.getDate()).padStart(2,'0')}`;
@@ -559,7 +560,7 @@
         document.getElementById("qrcode").innerHTML = "";
         new QRCode(document.getElementById("qrcode"), { text: myLink, width: 200, height: 200 });
         // Fecha por defecto para disponibilidad WhatsApp
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = fechaLocal();
         document.getElementById('admin-fecha-disponibilidad').value = hoy;
         document.getElementById('admin-fecha-disponibilidad').min = hoy;
         document.getElementById('admin-fecha-cierre').value = hoy;
@@ -599,7 +600,7 @@ try {
     const citasFijasWA = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
     const diaNumWA = new Date(fechaInput).getUTCDay();
     const bloqueoSemanalWA = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNumWA);
-    const hoyWA = new Date().toISOString().split('T')[0];
+    const hoyWA = fechaLocal();
     const ahoraWA = new Date(); const minutosAhoraWA = ahoraWA.getHours() * 60 + ahoraWA.getMinutes();
     const disponibles = horasBase.filter(h => !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) && !bloqueosEspWA.includes(h) && !citasFijasWA.includes(h) && !(bloqueoSemanalWA && parseHora(h) >= parseHora(bloqueoSemanalWA.horaCorte)) && !(fechaInput === hoyWA && parseHora(h) <= minutosAhoraWA));
     
@@ -639,7 +640,7 @@ try {
         const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === fechaInput).map(b => b.hora);
         const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, fechaInput)).map(c => c.hora);
         const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
-        const hoyAdm = new Date().toISOString().split('T')[0];
+        const hoyAdm = fechaLocal();
         const ahoraAdm = new Date(); const minutosAhoraAdm = ahoraAdm.getHours() * 60 + ahoraAdm.getMinutes();
         const disponibles = horasBase.filter(h =>
             !ocupadas.includes(h) && !(config.horasBloqueadas || []).includes(h) &&
@@ -661,7 +662,7 @@ try {
         lista.innerHTML = "<p class='text-center opacity-30 text-xs animate-pulse'>CARGANDO...</p>";
         if (_citasListener) _citasListener();
         _citasListener = db.collection("citas").where("barbero", "==", currentBarber).onSnapshot(snap => {
-            const hoy = new Date().toISOString().split('T')[0];
+            const hoy = fechaLocal();
             todasLasCitas = snap.docs.filter(d => d.data().fecha >= hoy).map(doc => ({ id: doc.id, ...doc.data() }));
             filtrarCitasAdmin('hoy');
             renderAdminControls();
@@ -674,7 +675,7 @@ try {
         dG.innerHTML = diasNombres.map((d, i) =>
             `<button onclick="toggleDia(${i})" class="text-[10px] p-3 rounded-xl font-black ${config.diasActivos.includes(i) ? 'bg-yellow-500 text-black' : 'bg-zinc-800 text-zinc-500'}">${d}</button>`
         ).join('');
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = fechaLocal();
         const horasOcupadasHoy = todasLasCitas.filter(c => c.fecha === hoy).map(c => c.hora);
         hG.innerHTML = horasBase.map(h => {
             let cls;
@@ -710,7 +711,7 @@ try {
     };
 
     window.filtrarCitasAdmin = (tipo) => {
-        const lista = document.getElementById('lista-citas'); const hoy = new Date().toISOString().split('T')[0];
+        const lista = document.getElementById('lista-citas'); const hoy = fechaLocal();
         ['hoy', 'todas'].forEach(t => document.getElementById(`f-${t}`).className = t === tipo ? "flex-1 py-4 rounded-2xl text-[10px] font-black bg-yellow-500 text-black" : "flex-1 py-4 rounded-2xl text-[10px] font-black text-zinc-500");
 
         // Generar citas fijas virtuales para un array de fechas
@@ -731,7 +732,7 @@ try {
         if (tipo === 'hoy') {
             fechasRango = [hoy];
         } else {
-            for (let i = 0; i < 28; i++) { const d = new Date(); d.setDate(d.getDate() + i); fechasRango.push(d.toISOString().split('T')[0]); }
+            for (let i = 0; i < 28; i++) { const d = new Date(); d.setDate(d.getDate() + i); fechasRango.push(fechaLocal(d)); }
         }
         const virtuales = generarVirtualesFijas(fechasRango);
 
@@ -775,20 +776,20 @@ try {
     };
 
     function renderStats() {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = fechaLocal();
         const ahora = new Date();
         const diaSemana = ahora.getDay();
         const lunes = new Date(ahora);
         lunes.setDate(ahora.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
         const domingo = new Date(lunes);
         domingo.setDate(lunes.getDate() + 6);
-        const lunesStr = lunes.toISOString().split('T')[0];
-        const domingoStr = domingo.toISOString().split('T')[0];
+        const lunesStr = fechaLocal(lunes);
+        const domingoStr = fechaLocal(domingo);
         // Generar citas fijas virtuales para la semana y hoy
         const citasFijasStats = [];
         for (let i = 0; i < 7; i++) {
             const d = new Date(lunes); d.setDate(lunes.getDate() + i);
-            const fecha = d.toISOString().split('T')[0];
+            const fecha = fechaLocal(d);
             (config.citasFijas || []).forEach((c, idx) => {
                 if (citaFijaAplicaEnFecha(c, fecha)) citasFijasStats.push({ fecha, hora: c.hora });
             });
@@ -969,7 +970,7 @@ try {
     };
 
     async function obtenerCitaPendiente(uid) {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = fechaLocal();
         const snap = await db.collection("citas").where("uid", "==", uid).where("barbero", "==", currentBarber).get();
         const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
         const citas = snap.docs.map(d => ({id: d.id, ...d.data()}))
@@ -1059,7 +1060,7 @@ try {
     window.validarYPasar = async (p) => {
         const f = document.getElementById('fecha').value;
         if(!f) return alert("Elige fecha");
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = fechaLocal();
         if(f < hoy) return alert("Elige una fecha a partir de hoy");
         irAlPaso(p); cargarHoras(f);
     };
@@ -1081,7 +1082,7 @@ try {
         const bloqueosEsp = (config.bloqueosEspeciales || []).filter(b => b.fecha === f).map(b => b.hora);
         const citasFijasHoy = (config.citasFijas || []).filter(c => citaFijaAplicaEnFecha(c, f)).map(c => c.hora);
         const bloqueoSemanal = (config.bloqueosSemanales || []).find(b => b.diaSemana === diaNum);
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = fechaLocal();
         const ahora = new Date(); const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
         horasBase.forEach(h => { if(!ocupadas.includes(h) && !config.horasBloqueadas?.includes(h) && !bloqueosEsp.includes(h) && !citasFijasHoy.includes(h) && !(bloqueoSemanal && parseHora(h) >= parseHora(bloqueoSemanal.horaCorte)) && !(f === hoy && parseHora(h) <= minutosAhora)) { const btn = document.createElement('button'); btn.innerText = h; btn.className = "bg-zinc-900 border border-zinc-800 p-4 rounded-xl text-[10px] font-bold active:scale-95 transition-transform"; btn.onclick = () => confirmarCita(h, f); grid.appendChild(btn); } });
         if(!grid.innerHTML) grid.innerHTML = "<p class='col-span-3 text-center text-zinc-500 font-black text-[10px] py-10 uppercase italic'>Sin horarios disponibles</p>";
@@ -1231,7 +1232,7 @@ try {
     };
     // ── CITA MANUAL ────────────────────────────────────────────────
     window.abrirModalManual = function() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = fechaLocal();
         document.getElementById('manual-nombre').value = '';
         document.getElementById('manual-tel').value = '';
         document.getElementById('manual-fecha').value = '';
