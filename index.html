@@ -521,6 +521,7 @@
     };
 
     auth.onAuthStateChanged(async (user) => {
+        await new Promise(r => setTimeout(r, 5000));
         document.getElementById('loading').classList.add('hidden');
         if (user) {
             const doc = await db.collection("usuarios").doc(user.uid).get();
