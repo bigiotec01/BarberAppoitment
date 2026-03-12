@@ -32,10 +32,17 @@ exports.notificarCitaCancelada = functions.firestore
         const before = change.before.data();
         const after = change.after.data();
 
+        console.log("onUpdate disparado - before.estado:", before.estado, "after.estado:", after.estado);
+
         // Solo disparar cuando cambia a cancelada
-        if (before.estado === 'cancelada' || after.estado !== 'cancelada') return null;
+        if (before.estado === 'cancelada' || after.estado !== 'cancelada') {
+            console.log("Condicion no cumplida, saliendo.");
+            return null;
+        }
 
         const token = after.adminToken;
+        console.log("Token encontrado:", token ? "SI" : "NO");
+
         if (!token) return null;
 
         try {
@@ -46,8 +53,9 @@ exports.notificarCitaCancelada = functions.firestore
                 },
                 token,
             });
+            console.log("Notificacion enviada OK");
         } catch (e) {
-            console.warn("notificarCitaCancelada error:", e.message);
+            console.error("Error enviando notificacion:", e.message);
         }
 
         return null;
