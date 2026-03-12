@@ -197,19 +197,19 @@
         <ul class="space-y-3 mb-7">
             <li class="flex gap-3 items-start">
                 <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
-                <p class="text-sm text-zinc-300 font-medium leading-snug">Las citas pasadas ya no aparecen ni en el panel admin ni para el cliente — admin y cliente ven lo mismo.</p>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">Las citas manuales ahora aparecen correctamente en la lista del admin.</p>
             </li>
             <li class="flex gap-3 items-start">
                 <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
-                <p class="text-sm text-zinc-300 font-medium leading-snug">El ícono de la app mejoró su visibilidad en modo oscuro en iPhone.</p>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">Corregido el desfase de fechas — "Hoy", "Mañana" y los días siguientes ahora muestran el día correcto.</p>
             </li>
             <li class="flex gap-3 items-start">
                 <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
-                <p class="text-sm text-zinc-300 font-medium leading-snug">Si la app queda abierta toda la noche, la fecha se actualiza sola al llegar el próximo día.</p>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">Las citas de hoy ya pasadas siguen visibles en el panel admin para control del día.</p>
             </li>
             <li class="flex gap-3 items-start">
                 <span class="text-yellow-500 font-black text-lg leading-none mt-0.5">·</span>
-                <p class="text-sm text-zinc-300 font-medium leading-snug">Al cerrar sesión se limpian los listeners de notificaciones — sin notificaciones cruzadas entre usuarios.</p>
+                <p class="text-sm text-zinc-300 font-medium leading-snug">Ícono de la app mejorado para modo oscuro en iPhone.</p>
             </li>
         </ul>
         <button onclick="cerrarNovedades()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest">Entendido</button>
@@ -570,14 +570,14 @@
         poblarSelectHoras();
         renderAdminControls();
         descargarCitasAdmin();
-        const NOVEDADES_KEY = 'novedades_v4';
+        const NOVEDADES_KEY = 'novedades_v5';
         if (!localStorage.getItem(NOVEDADES_KEY)) {
             document.getElementById('modal-novedades').classList.remove('hidden');
         }
     }
 
     window.cerrarNovedades = () => {
-        localStorage.setItem('novedades_v4', '1');
+        localStorage.setItem('novedades_v5', '1');
         document.getElementById('modal-novedades').classList.add('hidden');
     };
 
