@@ -26,7 +26,14 @@ exports.notificarCitaCancelada = functions.firestore
     .document("citas/{citaId}")
     .onDelete(async (snap) => {
         const cita = snap.data();
-        const token = cita.adminToken;
+
+        // Buscar el token actual del admin (evita usar token vencido guardado en la cita)
+        const db = admin.firestore();
+        const adminSnap = await db.collection("usuarios")
+            .where("rol", "==", "admin")
+            .get();
+
+        const token = adminSnap.docs[0]?.data()?.fcmToken || null;
 
         if (!token) return null;
 
