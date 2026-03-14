@@ -996,7 +996,7 @@ try {
                     ${cita.nombre && cita.nombre !== userData?.nombre ? `<p class="text-[10px] text-black font-black uppercase mb-1">${cita.nombre}</p>` : ''}
                     <h4 class="text-2xl font-black italic uppercase">${formatFecha(cita.fecha)}</h4>
                     <p class="text-xl font-black bg-black/10 inline-block px-5 py-1 rounded-full mt-2">${cita.hora}</p>
-                    <button onclick="cancelarCita('${cita.id}')" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
+                    <button onclick="cancelarCita('${cita.id}', '${cita.fecha}', '${cita.hora}')" class="block w-full mt-4 text-[9px] font-black uppercase underline opacity-60">Cancelar Cita</button>
                 </div>
             `).join('');
             document.getElementById('cita-info-container').classList.remove('hidden');
@@ -1029,7 +1029,21 @@ try {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.cancelarCita = async (citaId) => {
+    window.cancelarCita = async (citaId, fecha, hora) => {
+        if (fecha && hora) {
+            const [anio, mes, dia] = fecha.split('-').map(Number);
+            const minsCita = parseHora(hora);
+            const hrsCita = Math.floor(minsCita / 60);
+            const minsCitaResto = minsCita % 60;
+            const fechaCita = new Date(anio, mes - 1, dia, hrsCita, minsCitaResto);
+            const ahora = new Date();
+            const diffMs = fechaCita - ahora;
+            const diffHoras = diffMs / (1000 * 60 * 60);
+            if (diffHoras < 2) {
+                alert("No podés cancelar con menos de 2 horas de anticipación.");
+                return;
+            }
+        }
         if (!confirm("¿Cancelar?")) return;
         await db.collection("citas").doc(citaId).update({ estado: 'cancelada' });
         const uid = firebase.auth().currentUser?.uid;
