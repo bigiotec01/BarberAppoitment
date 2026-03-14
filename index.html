@@ -40,6 +40,17 @@
 </head>
 <body class="pb-24 md:pb-0">
 
+<!-- Popup aviso cancelacion -->
+<div id="popup-cancelacion" class="hidden fixed inset-0 bg-black/80 z-[300] flex items-center justify-center p-6">
+    <div class="bg-zinc-900 border border-yellow-500 rounded-2xl p-7 max-w-sm w-full text-center shadow-2xl">
+        <div class="text-4xl mb-3">⚠️</div>
+        <h2 class="text-xl font-black uppercase italic text-yellow-400 mb-3">Aviso importante</h2>
+        <p class="text-sm text-zinc-300 leading-relaxed">A partir de ahora, <span class="text-white font-bold">solo podés cancelar tu cita con 2 horas o menos de anticipación.</span></p>
+        <p class="text-xs text-zinc-500 mt-3">Si necesitás cancelar con más tiempo, contactá directamente al salón.</p>
+        <button onclick="cerrarPopupCancelacion()" class="mt-6 w-full bg-yellow-400 text-black font-black uppercase text-sm py-3 rounded-xl">Entendido</button>
+    </div>
+</div>
+
 <div id="loading" class="fixed inset-0 bg-black z-[200]">
     <img src="LoadingScreen/unnamed.jpg" class="w-full h-full object-contain animate-pulse" alt="Georgie Fale Salon"/>
     <p class="absolute bottom-8 left-0 right-0 text-center text-[10px] text-zinc-400 uppercase tracking-widest">Sincronizando Bgio System...</p>
@@ -531,6 +542,9 @@
     auth.onAuthStateChanged(async (user) => {
         await new Promise(r => setTimeout(r, 2000));
         document.getElementById('loading').classList.add('hidden');
+        if (user && !localStorage.getItem('aviso-cancelacion-v1')) {
+            document.getElementById('popup-cancelacion').classList.remove('hidden');
+        }
         if (user) {
             const doc = await db.collection("usuarios").doc(user.uid).get();
             userData = doc.data();
@@ -1027,6 +1041,11 @@ try {
         document.getElementById('btn-volver-cita').classList.add('hidden');
         document.getElementById('cita-info-container').classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.cerrarPopupCancelacion = () => {
+        localStorage.setItem('aviso-cancelacion-v1', '1');
+        document.getElementById('popup-cancelacion').classList.add('hidden');
     };
 
     window.cancelarCita = async (citaId, fecha, hora) => {
