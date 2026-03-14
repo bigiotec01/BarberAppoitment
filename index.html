@@ -1039,8 +1039,8 @@ try {
             const ahora = new Date();
             const diffMs = fechaCita - ahora;
             const diffHoras = diffMs / (1000 * 60 * 60);
-            if (diffHoras < 2) {
-                alert("No podés cancelar con menos de 2 horas de anticipación.");
+            if (diffHoras > 2) {
+                alert("Solo podés cancelar con 2 horas o menos de anticipación.");
                 return;
             }
         }
