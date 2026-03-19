@@ -45,8 +45,8 @@
     <div class="bg-zinc-900 border border-yellow-500 rounded-2xl p-7 max-w-sm w-full text-center shadow-2xl">
         <div class="text-4xl mb-3">⚠️</div>
         <h2 class="text-xl font-black uppercase italic text-yellow-400 mb-3">Aviso importante</h2>
-        <p class="text-sm text-zinc-300 leading-relaxed">A partir de ahora, <span class="text-white font-bold">solo podés cancelar tu cita con 2 horas o menos de anticipación.</span></p>
-        <p class="text-xs text-zinc-500 mt-3">Si necesitás cancelar con más tiempo, contactá directamente al salón.</p>
+        <p class="text-sm text-zinc-300 leading-relaxed">Podés cancelar tu cita con <span class="text-white font-bold">más de 2 horas de anticipación.</span></p>
+        <p class="text-xs text-zinc-500 mt-3">Si quedan menos de 2 horas para tu cita, ya no es posible cancelarla desde la app.</p>
         <button onclick="cerrarPopupCancelacion()" class="mt-6 w-full bg-yellow-400 text-black font-black uppercase text-sm py-3 rounded-xl">Entendido</button>
     </div>
 </div>
@@ -1058,8 +1058,8 @@ try {
             const ahora = new Date();
             const diffMs = fechaCita - ahora;
             const diffHoras = diffMs / (1000 * 60 * 60);
-            if (diffHoras > 2) {
-                alert("Solo podés cancelar con 2 horas o menos de anticipación.");
+            if (diffHoras <= 2) {
+                alert("No podés cancelar con menos de 2 horas de anticipación.");
                 return;
             }
         }
