@@ -877,13 +877,34 @@ try {
         const val = document.getElementById('cita-fija-frecuencia').value;
         document.getElementById('cita-fija-inicio-wrap').classList.toggle('hidden', val !== 'bisemanal');
     };
-    window.agregarCitaFija = () => {
+    window.agregarCitaFija = async () => {
         const nombre = document.getElementById('cita-fija-nombre').value.trim();
         const tel = document.getElementById('cita-fija-tel').value.trim();
         const dia = parseInt(document.getElementById('cita-fija-dia').value);
         const hora = document.getElementById('cita-fija-hora').value;
         const frecuencia = document.getElementById('cita-fija-frecuencia').value;
         if (!nombre) return alert("Ingresa el nombre del cliente");
+
+        // Verificar si ya hay otra cita fija en ese día y hora
+        const conflictoFija = (config.citasFijas || []).find(c => c.diaSemana === dia && c.hora === hora);
+        if (conflictoFija) {
+            return alert(`Ya existe una cita fija de ${conflictoFija.nombre} ese día a las ${hora}. Eliminala primero.`);
+        }
+
+        // Verificar si hay citas regulares existentes en Firestore ese día de semana y hora
+        const snapCitas = await db.collection("citas").where("hora", "==", hora).where("barbero", "==", currentBarber).get();
+        const diasNombres = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+        const conflictosRegulares = snapCitas.docs
+            .map(d => d.data())
+            .filter(c => new Date(c.fecha).getUTCDay() === dia && c.fecha >= fechaLocal());
+        if (conflictosRegulares.length > 0) {
+            const lista = conflictosRegulares.map(c => `• ${c.nombre} (${c.fecha})`).join('\n');
+            const confirmar = window.confirm(
+                `Ya existen ${conflictosRegulares.length} cita(s) regular(es) los ${diasNombres[dia]} a las ${hora}:\n\n${lista}\n\n¿Querés agregar igual la cita fija? Esas citas van a quedar en conflicto.`
+            );
+            if (!confirmar) return;
+        }
+
         if (!config.citasFijas) config.citasFijas = [];
         const entrada = { diaSemana: dia, hora, nombre, frecuencia };
         if (tel) entrada.tel = tel;
@@ -1337,6 +1358,19 @@ try {
         const servicioVal = document.getElementById('manual-servicio').value;
         if (!nombre) { alert('El nombre del cliente es obligatorio'); return; }
         if (!fecha || !hora) { alert('Elige fecha y hora'); return; }
+
+        // Re-validar al momento de guardar para evitar conflictos por race condition
+        const diaNum = new Date(fecha).getUTCDay();
+        const snapConflicto = await db.collection("citas").where("fecha", "==", fecha).where("hora", "==", hora).where("barbero", "==", currentBarber).get();
+        if (!snapConflicto.empty) {
+            const citaExistente = snapConflicto.docs[0].data();
+            return alert(`Conflicto: ${citaExistente.nombre} ya tiene una cita ese día a las ${hora}. Ese horario ya no está disponible.`);
+        }
+        const citaFijaConflicto = (config.citasFijas || []).find(c => c.diaSemana === diaNum && c.hora === hora && citaFijaAplicaEnFecha(c, fecha));
+        if (citaFijaConflicto) {
+            return alert(`Conflicto: ${citaFijaConflicto.nombre} tiene una cita fija ese día a las ${hora}. Ese horario no está disponible.`);
+        }
+
         const datos = {
             fecha, hora,
             barbero: currentBarber,
