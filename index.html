@@ -1221,6 +1221,19 @@ try {
         const btn = document.getElementById('btn-confirmar-otra');
         btn.textContent = 'Guardando...'; btn.disabled = true;
         try {
+            const snapConflicto = await db.collection("citas").where("fecha","==",_otraPersonaFecha).where("hora","==",_otraPersonaHora).where("barbero","==",currentBarber).get();
+            if (!snapConflicto.empty) {
+                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                document.getElementById('modal-otra-persona').classList.add('hidden');
+                return;
+            }
+            const diaNumOP = new Date(_otraPersonaFecha).getUTCDay();
+            const citaFijaConflictoOP = (config.citasFijas || []).find(c => c.diaSemana === diaNumOP && c.hora === _otraPersonaHora && citaFijaAplicaEnFecha(c, _otraPersonaFecha));
+            if (citaFijaConflictoOP) {
+                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                document.getElementById('modal-otra-persona').classList.add('hidden');
+                return;
+            }
             let adminToken = null;
             try {
                 const adminSnap = await db.collection("usuarios").where("rol","==","admin").where("barberId","==",currentBarber).get();
@@ -1241,6 +1254,17 @@ try {
     async function abrirConfirmacionCita(h, f, servicio, precio) {
         const resumen = servicio ? `${servicio} ($${precio})` : 'Sin servicio especificado';
         if(confirm(`¿Confirmar cita el ${formatFecha(f)} a las ${h}?\nServicio: ${resumen}`)) {
+            const snapConflicto = await db.collection("citas").where("fecha","==",f).where("hora","==",h).where("barbero","==",currentBarber).get();
+            if (!snapConflicto.empty) {
+                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                return;
+            }
+            const diaNumCC = new Date(f).getUTCDay();
+            const citaFijaConflictoCC = (config.citasFijas || []).find(c => c.diaSemana === diaNumCC && c.hora === h && citaFijaAplicaEnFecha(c, f));
+            if (citaFijaConflictoCC) {
+                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                return;
+            }
             let adminToken = null;
             try {
                 const adminSnap = await db.collection("usuarios").where("rol","==","admin").where("barberId","==",currentBarber).get();
