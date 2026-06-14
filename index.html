@@ -1313,13 +1313,31 @@ try {
         }
     };
 
+    let _confirmCitaServicio = null, _confirmCitaPrecio = null;
+
     async function abrirConfirmacionCita(h, f, servicio, precio) {
-        const resumen = servicio ? `${servicio} ($${precio})` : 'Sin servicio especificado';
-        if(confirm(`¿Confirmar cita el ${formatFecha(f)} a las ${h}?\nServicio: ${resumen}`)) {
+        _citaPendienteHora = h;
+        _citaPendienteFecha = f;
+        _confirmCitaServicio = servicio;
+        _confirmCitaPrecio = precio;
+        document.getElementById('confirmar-cita-fecha').innerText = formatFecha(f);
+        document.getElementById('confirmar-cita-hora').innerText = h;
+        document.getElementById('confirmar-cita-servicio').innerText = servicio ? `✂️ ${servicio} · $${precio}` : 'Sin servicio especificado';
+        document.getElementById('modal-confirmar-cita').classList.remove('hidden');
+    }
+
+    window.cerrarConfirmarCita = () => document.getElementById('modal-confirmar-cita').classList.add('hidden');
+
+    window.confirmarCitaFinal = async () => {
+        const h = _citaPendienteHora, f = _citaPendienteFecha, servicio = _confirmCitaServicio, precio = _confirmCitaPrecio;
+        const btn = document.getElementById('btn-confirmar-cita');
+        btn.textContent = 'Guardando...'; btn.disabled = true;
+        try {
             const diaNumCC = new Date(f).getUTCDay();
             const citaFijaConflictoCC = (config.citasFijas || []).find(c => c.diaSemana === diaNumCC && c.hora === h && citaFijaAplicaEnFecha(c, f));
             if (citaFijaConflictoCC) {
                 alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                document.getElementById('modal-confirmar-cita').classList.add('hidden');
                 return;
             }
             let adminToken = null;
@@ -1329,24 +1347,27 @@ try {
             } catch(e) {}
             const datos = { fecha:f, hora:h, barbero: currentBarber, nombre: userData.nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() };
             if (servicio) { datos.servicio = servicio; datos.precio = precio; }
-            try {
-                await db.runTransaction(async (tx) => {
-                    const snapConflicto = await tx.get(db.collection("citas").where("fecha","==",f).where("hora","==",h).where("barbero","==",currentBarber));
-                    if (!snapConflicto.empty) throw new Error('SLOT_TAKEN');
-                    tx.set(db.collection("citas").doc(), datos);
-                });
-            } catch(e) {
-                if (e.message === 'SLOT_TAKEN') {
-                    alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
-                    return;
-                }
-                throw e;
-            }
+            await db.runTransaction(async (tx) => {
+                const snapConflicto = await tx.get(db.collection("citas").where("fecha","==",f).where("hora","==",h).where("barbero","==",currentBarber));
+                if (!snapConflicto.empty) throw new Error('SLOT_TAKEN');
+                tx.set(db.collection("citas").doc(), datos);
+            });
+            document.getElementById('modal-confirmar-cita').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             _otraPersonaFecha = f;
+            alert(`✅ Cita confirmada el ${formatFecha(f)} a las ${h}`);
             await obtenerCitaPendiente(auth.currentUser.uid);
+        } catch(e) {
+            if (e.message === 'SLOT_TAKEN') {
+                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                document.getElementById('modal-confirmar-cita').classList.add('hidden');
+            } else {
+                alert('Error al guardar: ' + e.message);
+            }
+        } finally {
+            btn.textContent = 'Confirmar'; btn.disabled = false;
         }
-    }
+    };
 
     window.login = async () => {
         const email = document.getElementById('login-email').value.trim();
@@ -1569,6 +1590,22 @@ try {
         <div class="flex gap-3">
             <button onclick="cerrarOtraPersona()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
             <button onclick="confirmarOtraPersona()" id="btn-confirmar-otra" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Cita -->
+<div id="modal-confirmar-cita" class="hidden fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 w-full max-w-sm space-y-4 text-center">
+        <p class="text-yellow-500 font-black uppercase tracking-widest text-sm italic">📅 Confirmar Cita</p>
+        <div>
+            <p id="confirmar-cita-fecha" class="text-white font-black text-xl uppercase italic"></p>
+            <p id="confirmar-cita-hora" class="text-yellow-500 font-black text-3xl mt-1"></p>
+            <p id="confirmar-cita-servicio" class="text-zinc-400 text-xs font-bold mt-2 uppercase tracking-widest"></p>
+        </div>
+        <div class="flex gap-3 pt-2">
+            <button onclick="cerrarConfirmarCita()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
+            <button onclick="confirmarCitaFinal()" id="btn-confirmar-cita" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Confirmar</button>
         </div>
     </div>
 </div>
