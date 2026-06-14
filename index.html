@@ -189,10 +189,28 @@
     <div>
     <section id="step-1" class="bg-card p-8 rounded-[3rem] shadow-2xl text-center">
         <h2 id="step1-titulo" class="text-xl font-black mb-6 uppercase italic text-white tracking-tighter">Agenda tu recorte</h2>
-        <div class="flex gap-2 mb-6">
-            <select id="fecha-dia" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
-            <select id="fecha-mes" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
-            <select id="fecha-anio" onchange="actualizarFecha()" class="flex-1 bg-black border-2 border-zinc-800 p-3 rounded-2xl text-yellow-500 text-center font-bold outline-none text-sm"></select>
+        <div class="mb-6">
+            <button type="button" id="fecha-display-btn" onclick="toggleCalendario()" class="w-full bg-black border-2 border-zinc-800 p-4 rounded-2xl text-yellow-500 text-center font-black outline-none text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                <span id="fecha-display-texto">...</span>
+                <span class="text-zinc-500 text-xs">📅</span>
+            </button>
+            <div id="calendario-picker" class="hidden mt-3 bg-zinc-950 border-2 border-zinc-800 rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <button type="button" id="calendario-prev" onclick="cambiarMesCalendario(-1)" class="text-yellow-500 font-black text-lg w-8 h-8 rounded-full active:bg-zinc-800">‹</button>
+                    <p id="calendario-mes-anio" class="text-white font-black uppercase text-xs italic"></p>
+                    <button type="button" onclick="cambiarMesCalendario(1)" class="text-yellow-500 font-black text-lg w-8 h-8 rounded-full active:bg-zinc-800">›</button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 mb-2 text-center">
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">D</span>
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">L</span>
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">M</span>
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">M</span>
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">J</span>
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">V</span>
+                    <span class="text-zinc-500 text-[9px] font-black uppercase">S</span>
+                </div>
+                <div id="calendario-dias" class="grid grid-cols-7 gap-1"></div>
+            </div>
         </div>
         <input type="hidden" id="fecha" value="">
         <button onclick="validarYPasar(2)" class="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black uppercase">Ver Disponibilidad</button>
@@ -1090,38 +1108,80 @@ try {
         if (uid) await obtenerCitaPendiente(uid);
     };
 
+    let calendarioMesActual = null;
+
     function inicializarFechaPicker() {
         const hoy = new Date();
-        const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const mesEl = document.getElementById('fecha-mes');
-        const diaEl = document.getElementById('fecha-dia');
-        const anioEl = document.getElementById('fecha-anio');
-        const anioActual = hoy.getFullYear();
-        mesEl.innerHTML = meses.map((m, i) => `<option value="${i+1}">${m}</option>`).join('');
-        anioEl.innerHTML = `<option value="${anioActual}">${anioActual}</option><option value="${anioActual+1}">${anioActual+1}</option>`;
-        mesEl.value = hoy.getMonth() + 1;
-        anioEl.value = anioActual;
-        actualizarDias();
-        diaEl.value = hoy.getDate();
-        actualizarFecha();
+        document.getElementById('fecha').value = fechaLocal(hoy);
+        calendarioMesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        actualizarFechaDisplay();
+        renderCalendario();
     }
 
-    function actualizarDias() {
-        const diaEl = document.getElementById('fecha-dia');
-        const mes = parseInt(document.getElementById('fecha-mes').value);
-        const anio = parseInt(document.getElementById('fecha-anio').value);
-        const diasEnMes = new Date(anio, mes, 0).getDate();
-        const valorActual = parseInt(diaEl.value) || 1;
-        diaEl.innerHTML = Array.from({length: diasEnMes}, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('');
-        diaEl.value = Math.min(valorActual, diasEnMes);
+    function actualizarFechaDisplay() {
+        document.getElementById('fecha-display-texto').innerText = formatFecha(document.getElementById('fecha').value);
     }
 
-    window.actualizarFecha = () => {
-        actualizarDias();
-        const mes = String(document.getElementById('fecha-mes').value).padStart(2, '0');
-        const dia = String(document.getElementById('fecha-dia').value).padStart(2, '0');
-        const anio = document.getElementById('fecha-anio').value;
-        document.getElementById('fecha').value = `${anio}-${mes}-${dia}`;
+    function renderCalendario() {
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const anio = calendarioMesActual.getFullYear();
+        const mes = calendarioMesActual.getMonth();
+        document.getElementById('calendario-mes-anio').innerText = `${meses[mes]} ${anio}`;
+
+        const hoy = fechaLocal();
+        const fechaSeleccionada = document.getElementById('fecha').value;
+        const primerDiaSemana = new Date(anio, mes, 1).getDay();
+        const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+
+        let celdas = '';
+        for (let i = 0; i < primerDiaSemana; i++) celdas += '<div></div>';
+        for (let d = 1; d <= diasEnMes; d++) {
+            const dateStr = `${anio}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            let cls = 'aspect-square flex items-center justify-center rounded-xl text-xs font-bold';
+            if (dateStr < hoy) {
+                cls += ' text-zinc-700';
+            } else if (dateStr === fechaSeleccionada) {
+                cls += ' bg-yellow-500 text-black';
+            } else if (dateStr === hoy) {
+                cls += ' border border-yellow-500 text-yellow-500 active:bg-zinc-800';
+            } else {
+                cls += ' text-white active:bg-zinc-800';
+            }
+            const click = dateStr < hoy ? '' : ` onclick="seleccionarDiaCalendario('${dateStr}')"`;
+            celdas += `<div class="${cls}"${click}>${d}</div>`;
+        }
+        document.getElementById('calendario-dias').innerHTML = celdas;
+
+        // No permitir retroceder antes del mes actual
+        const inicioMesActual = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const prevBtn = document.getElementById('calendario-prev');
+        if (calendarioMesActual <= inicioMesActual) {
+            prevBtn.classList.add('opacity-30', 'pointer-events-none');
+        } else {
+            prevBtn.classList.remove('opacity-30', 'pointer-events-none');
+        }
+    }
+
+    window.cambiarMesCalendario = (delta) => {
+        calendarioMesActual = new Date(calendarioMesActual.getFullYear(), calendarioMesActual.getMonth() + delta, 1);
+        renderCalendario();
+    };
+
+    window.seleccionarDiaCalendario = (dateStr) => {
+        document.getElementById('fecha').value = dateStr;
+        actualizarFechaDisplay();
+        document.getElementById('calendario-picker').classList.add('hidden');
+        renderCalendario();
+    };
+
+    window.toggleCalendario = () => {
+        const picker = document.getElementById('calendario-picker');
+        if (picker.classList.contains('hidden')) {
+            const [y, m] = document.getElementById('fecha').value.split('-').map(Number);
+            calendarioMesActual = new Date(y, m - 1, 1);
+            renderCalendario();
+        }
+        picker.classList.toggle('hidden');
     };
 
     window.validarYPasar = async (p) => {
