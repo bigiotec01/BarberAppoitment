@@ -1170,7 +1170,6 @@ try {
     window.seleccionarDiaCalendario = (dateStr) => {
         document.getElementById('fecha').value = dateStr;
         actualizarFechaDisplay();
-        document.getElementById('calendario-picker').classList.add('hidden');
         renderCalendario();
     };
 
