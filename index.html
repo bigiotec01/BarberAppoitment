@@ -544,6 +544,7 @@
     let todasLasCitas = [];
     const fechaLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const parseHora = (h) => { const [t,p] = h.split(' '); let [hr,min] = t.split(':').map(Number); if(p==='PM'&&hr!==12) hr+=12; if(p==='AM'&&hr===12) hr=0; return hr*60+min; };
+    const citaDocId = (fecha, hora, barbero) => `${barbero}_${fecha}_${hora.replace(/[^0-9A-Za-z]/g, '')}`;
     const formatFecha = (fecha) => {
         const _hoyD = new Date(); const hoy = `${_hoyD.getFullYear()}-${String(_hoyD.getMonth()+1).padStart(2,'0')}-${String(_hoyD.getDate()).padStart(2,'0')}`;
         const mananaD = new Date(); mananaD.setDate(mananaD.getDate() + 1);
@@ -1292,10 +1293,11 @@ try {
                 const adminSnap = await db.collection("usuarios").where("rol","==","admin").where("barberId","==",currentBarber).get();
                 adminToken = adminSnap.docs[0]?.data()?.fcmToken || null;
             } catch(e) {}
+            const docRefOP = db.collection("citas").doc(citaDocId(_otraPersonaFecha, _otraPersonaHora, currentBarber));
             await db.runTransaction(async (tx) => {
-                const snapConflicto = await tx.get(db.collection("citas").where("fecha","==",_otraPersonaFecha).where("hora","==",_otraPersonaHora).where("barbero","==",currentBarber));
-                if (!snapConflicto.empty) throw new Error('SLOT_TAKEN');
-                tx.set(db.collection("citas").doc(), { fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
+                const docSnap = await tx.get(docRefOP);
+                if (docSnap.exists && docSnap.data().estado !== 'cancelada') throw new Error('SLOT_TAKEN');
+                tx.set(docRefOP, { fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
             });
             document.getElementById('modal-otra-persona').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
@@ -1347,10 +1349,11 @@ try {
             } catch(e) {}
             const datos = { fecha:f, hora:h, barbero: currentBarber, nombre: userData.nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() };
             if (servicio) { datos.servicio = servicio; datos.precio = precio; }
+            const docRefCC = db.collection("citas").doc(citaDocId(f, h, currentBarber));
             await db.runTransaction(async (tx) => {
-                const snapConflicto = await tx.get(db.collection("citas").where("fecha","==",f).where("hora","==",h).where("barbero","==",currentBarber));
-                if (!snapConflicto.empty) throw new Error('SLOT_TAKEN');
-                tx.set(db.collection("citas").doc(), datos);
+                const docSnap = await tx.get(docRefCC);
+                if (docSnap.exists && docSnap.data().estado !== 'cancelada') throw new Error('SLOT_TAKEN');
+                tx.set(docRefCC, datos);
             });
             document.getElementById('modal-confirmar-cita').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
@@ -1493,10 +1496,11 @@ try {
             datos.precio = parseFloat(sPrecio);
         }
         try {
+            const docRefManual = db.collection("citas").doc(citaDocId(fecha, hora, currentBarber));
             await db.runTransaction(async (tx) => {
-                const snapConflicto = await tx.get(db.collection("citas").where("fecha", "==", fecha).where("hora", "==", hora).where("barbero", "==", currentBarber));
-                if (!snapConflicto.empty) throw new Error('SLOT_TAKEN:' + snapConflicto.docs[0].data().nombre);
-                tx.set(db.collection("citas").doc(), datos);
+                const docSnap = await tx.get(docRefManual);
+                if (docSnap.exists && docSnap.data().estado !== 'cancelada') throw new Error('SLOT_TAKEN:' + docSnap.data().nombre);
+                tx.set(docRefManual, datos);
             });
             cerrarModalManual();
             alert(`Cita de ${nombre} guardada para el ${formatFecha(fecha)} a las ${hora}`);
