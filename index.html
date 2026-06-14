@@ -1221,12 +1221,6 @@ try {
         const btn = document.getElementById('btn-confirmar-otra');
         btn.textContent = 'Guardando...'; btn.disabled = true;
         try {
-            const snapConflicto = await db.collection("citas").where("fecha","==",_otraPersonaFecha).where("hora","==",_otraPersonaHora).where("barbero","==",currentBarber).get();
-            if (!snapConflicto.empty) {
-                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
-                document.getElementById('modal-otra-persona').classList.add('hidden');
-                return;
-            }
             const diaNumOP = new Date(_otraPersonaFecha).getUTCDay();
             const citaFijaConflictoOP = (config.citasFijas || []).find(c => c.diaSemana === diaNumOP && c.hora === _otraPersonaHora && citaFijaAplicaEnFecha(c, _otraPersonaFecha));
             if (citaFijaConflictoOP) {
@@ -1239,13 +1233,22 @@ try {
                 const adminSnap = await db.collection("usuarios").where("rol","==","admin").where("barberId","==",currentBarber).get();
                 adminToken = adminSnap.docs[0]?.data()?.fcmToken || null;
             } catch(e) {}
-            await db.collection("citas").add({ fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
+            await db.runTransaction(async (tx) => {
+                const snapConflicto = await tx.get(db.collection("citas").where("fecha","==",_otraPersonaFecha).where("hora","==",_otraPersonaHora).where("barbero","==",currentBarber));
+                if (!snapConflicto.empty) throw new Error('SLOT_TAKEN');
+                tx.set(db.collection("citas").doc(), { fecha: _otraPersonaFecha, hora: _otraPersonaHora, barbero: currentBarber, nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() });
+            });
             document.getElementById('modal-otra-persona').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             alert(`✅ Cita de ${nombre} confirmada a las ${_otraPersonaHora}`);
             await obtenerCitaPendiente(auth.currentUser.uid);
         } catch(e) {
-            alert('Error al guardar: ' + e.message);
+            if (e.message === 'SLOT_TAKEN') {
+                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                document.getElementById('modal-otra-persona').classList.add('hidden');
+            } else {
+                alert('Error al guardar: ' + e.message);
+            }
         } finally {
             btn.textContent = 'Confirmar'; btn.disabled = false;
         }
@@ -1254,11 +1257,6 @@ try {
     async function abrirConfirmacionCita(h, f, servicio, precio) {
         const resumen = servicio ? `${servicio} ($${precio})` : 'Sin servicio especificado';
         if(confirm(`¿Confirmar cita el ${formatFecha(f)} a las ${h}?\nServicio: ${resumen}`)) {
-            const snapConflicto = await db.collection("citas").where("fecha","==",f).where("hora","==",h).where("barbero","==",currentBarber).get();
-            if (!snapConflicto.empty) {
-                alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
-                return;
-            }
             const diaNumCC = new Date(f).getUTCDay();
             const citaFijaConflictoCC = (config.citasFijas || []).find(c => c.diaSemana === diaNumCC && c.hora === h && citaFijaAplicaEnFecha(c, f));
             if (citaFijaConflictoCC) {
@@ -1272,7 +1270,19 @@ try {
             } catch(e) {}
             const datos = { fecha:f, hora:h, barbero: currentBarber, nombre: userData.nombre, tel: userData.telefono, uid: auth.currentUser.uid, adminToken, creado: firebase.firestore.Timestamp.now() };
             if (servicio) { datos.servicio = servicio; datos.precio = precio; }
-            const docRef = await db.collection("citas").add(datos);
+            try {
+                await db.runTransaction(async (tx) => {
+                    const snapConflicto = await tx.get(db.collection("citas").where("fecha","==",f).where("hora","==",h).where("barbero","==",currentBarber));
+                    if (!snapConflicto.empty) throw new Error('SLOT_TAKEN');
+                    tx.set(db.collection("citas").doc(), datos);
+                });
+            } catch(e) {
+                if (e.message === 'SLOT_TAKEN') {
+                    alert('Ese horario ya fue reservado por otra persona. Elegí otro horario.');
+                    return;
+                }
+                throw e;
+            }
             document.getElementById('step-2').classList.add('hidden');
             _otraPersonaFecha = f;
             await obtenerCitaPendiente(auth.currentUser.uid);
@@ -1385,11 +1395,6 @@ try {
 
         // Re-validar al momento de guardar para evitar conflictos por race condition
         const diaNum = new Date(fecha).getUTCDay();
-        const snapConflicto = await db.collection("citas").where("fecha", "==", fecha).where("hora", "==", hora).where("barbero", "==", currentBarber).get();
-        if (!snapConflicto.empty) {
-            const citaExistente = snapConflicto.docs[0].data();
-            return alert(`Conflicto: ${citaExistente.nombre} ya tiene una cita ese día a las ${hora}. Ese horario ya no está disponible.`);
-        }
         const citaFijaConflicto = (config.citasFijas || []).find(c => c.diaSemana === diaNum && c.hora === hora && citaFijaAplicaEnFecha(c, fecha));
         if (citaFijaConflicto) {
             return alert(`Conflicto: ${citaFijaConflicto.nombre} tiene una cita fija ese día a las ${hora}. Ese horario no está disponible.`);
@@ -1408,11 +1413,19 @@ try {
             datos.precio = parseFloat(sPrecio);
         }
         try {
-            await db.collection("citas").add(datos);
+            await db.runTransaction(async (tx) => {
+                const snapConflicto = await tx.get(db.collection("citas").where("fecha", "==", fecha).where("hora", "==", hora).where("barbero", "==", currentBarber));
+                if (!snapConflicto.empty) throw new Error('SLOT_TAKEN:' + snapConflicto.docs[0].data().nombre);
+                tx.set(db.collection("citas").doc(), datos);
+            });
             cerrarModalManual();
             alert(`Cita de ${nombre} guardada para el ${formatFecha(fecha)} a las ${hora}`);
         } catch(e) {
-            alert('Error al guardar la cita');
+            if (typeof e.message === 'string' && e.message.startsWith('SLOT_TAKEN:')) {
+                alert(`Conflicto: ${e.message.split(':')[1]} ya tiene una cita ese día a las ${hora}. Ese horario ya no está disponible.`);
+            } else {
+                alert('Error al guardar la cita');
+            }
         }
     };
     // ───────────────────────────────────────────────────────────────

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(firebase deploy:*)",
+      "Bash(firebase functions:log --only notificarCitaCancelada)",
+      "Bash(firebase functions:log)",
+      "Bash(firebase functions:delete notificarCitaCancelada --region us-central1 --force)"
+    ]
+  }
+}
