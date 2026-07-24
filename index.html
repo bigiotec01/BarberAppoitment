@@ -1225,6 +1225,8 @@ try {
             _otraPersonaHora = h;
             document.getElementById('otra-persona-hora-label').textContent = h;
             document.getElementById('otra-persona-nombre').value = '';
+            document.getElementById('check-politica-otra-persona').checked = false;
+            document.getElementById('btn-confirmar-otra').disabled = true;
             document.getElementById('modal-otra-persona').classList.remove('hidden');
             return;
         }
@@ -1270,6 +1272,8 @@ try {
         _otraPersonaHora = disponibles[0];
         document.getElementById('otra-persona-hora-label').textContent = _otraPersonaHora;
         document.getElementById('otra-persona-nombre').value = userData.nombre;
+        document.getElementById('check-politica-otra-persona').checked = false;
+        document.getElementById('btn-confirmar-otra').disabled = true;
         document.getElementById('modal-otra-persona').classList.remove('hidden');
     };
 
@@ -1278,6 +1282,10 @@ try {
     window.confirmarOtraPersona = async () => {
         const nombre = document.getElementById('otra-persona-nombre').value.trim();
         if (!nombre) { alert('Ingresa un nombre'); return; }
+        if (!document.getElementById('check-politica-otra-persona').checked) {
+            alert('Debés aceptar la política de cancelación para continuar.');
+            return;
+        }
         const btn = document.getElementById('btn-confirmar-otra');
         btn.textContent = 'Guardando...'; btn.disabled = true;
         try {
@@ -1597,9 +1605,17 @@ try {
             <label class="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Nombre</label>
             <input id="otra-persona-nombre" type="text" class="w-full bg-zinc-800 border border-zinc-700 text-white font-bold text-sm rounded-2xl px-4 py-3 focus:outline-none focus:border-yellow-500" />
         </div>
+        <div class="bg-red-500/10 border border-red-500/40 rounded-2xl p-3 text-left">
+            <p class="text-red-400 font-black text-[11px] uppercase tracking-wide">⚠️ Política de cancelación</p>
+            <p class="text-red-300 text-[11px] font-semibold mt-1 leading-snug">Al no asistir a tu cita ni cancelarla con anticipación, se aplica una penalidad del 50% del servicio. Este pago es requerido para agendar una nueva cita.</p>
+        </div>
+        <label class="flex items-start gap-2 text-left cursor-pointer">
+            <input type="checkbox" id="check-politica-otra-persona" onchange="document.getElementById('btn-confirmar-otra').disabled = !this.checked" class="mt-0.5 w-4 h-4 accent-yellow-500 shrink-0" />
+            <span class="text-zinc-300 text-[11px] font-bold">Entiendo y acepto la política de cancelación</span>
+        </label>
         <div class="flex gap-3">
             <button onclick="cerrarOtraPersona()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
-            <button onclick="confirmarOtraPersona()" id="btn-confirmar-otra" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Confirmar</button>
+            <button onclick="confirmarOtraPersona()" id="btn-confirmar-otra" disabled class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase disabled:opacity-40 disabled:cursor-not-allowed">Confirmar</button>
         </div>
     </div>
 </div>
