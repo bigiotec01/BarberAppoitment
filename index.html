@@ -1325,12 +1325,18 @@ try {
         document.getElementById('confirmar-cita-fecha').innerText = formatFecha(f);
         document.getElementById('confirmar-cita-hora').innerText = h;
         document.getElementById('confirmar-cita-servicio').innerText = servicio ? `✂️ ${servicio} · $${precio}` : 'Sin servicio especificado';
+        document.getElementById('check-politica-cancelacion').checked = false;
+        document.getElementById('btn-confirmar-cita').disabled = true;
         document.getElementById('modal-confirmar-cita').classList.remove('hidden');
     }
 
     window.cerrarConfirmarCita = () => document.getElementById('modal-confirmar-cita').classList.add('hidden');
 
     window.confirmarCitaFinal = async () => {
+        if (!document.getElementById('check-politica-cancelacion').checked) {
+            alert('Debés aceptar la política de cancelación para continuar.');
+            return;
+        }
         const h = _citaPendienteHora, f = _citaPendienteFecha, servicio = _confirmCitaServicio, precio = _confirmCitaPrecio;
         const btn = document.getElementById('btn-confirmar-cita');
         btn.textContent = 'Guardando...'; btn.disabled = true;
@@ -1607,9 +1613,17 @@ try {
             <p id="confirmar-cita-hora" class="text-yellow-500 font-black text-3xl mt-1"></p>
             <p id="confirmar-cita-servicio" class="text-zinc-400 text-xs font-bold mt-2 uppercase tracking-widest"></p>
         </div>
+        <div class="bg-red-500/10 border border-red-500/40 rounded-2xl p-3 text-left">
+            <p class="text-red-400 font-black text-[11px] uppercase tracking-wide">⚠️ Política de cancelación</p>
+            <p class="text-red-300 text-[11px] font-semibold mt-1 leading-snug">Al no asistir a tu cita ni cancelarla con anticipación, se aplica una penalidad del 50% del servicio. Este pago es requerido para agendar una nueva cita.</p>
+        </div>
+        <label class="flex items-start gap-2 text-left cursor-pointer">
+            <input type="checkbox" id="check-politica-cancelacion" onchange="document.getElementById('btn-confirmar-cita').disabled = !this.checked" class="mt-0.5 w-4 h-4 accent-yellow-500 shrink-0" />
+            <span class="text-zinc-300 text-[11px] font-bold">Entiendo y acepto la política de cancelación</span>
+        </label>
         <div class="flex gap-3 pt-2">
             <button onclick="cerrarConfirmarCita()" class="flex-1 bg-zinc-800 text-white font-black py-3 rounded-2xl text-xs uppercase">Cancelar</button>
-            <button onclick="confirmarCitaFinal()" id="btn-confirmar-cita" class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase">Confirmar</button>
+            <button onclick="confirmarCitaFinal()" id="btn-confirmar-cita" disabled class="flex-1 bg-yellow-500 text-black font-black py-3 rounded-2xl text-xs uppercase disabled:opacity-40 disabled:cursor-not-allowed">Confirmar</button>
         </div>
     </div>
 </div>
